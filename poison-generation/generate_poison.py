@@ -186,14 +186,14 @@ def add_watermark(
                 transparent.paste(img_watermark, location)
                 # transparent.show()
                 # use numpy
-                na = np.array(transparent).astype(np.float)
+                na = np.array(transparent).astype(float)
                 # Halve all alpha values
                 # na[..., 3] *=0.5
                 transparent = Image.fromarray(na.astype(np.uint8))
                 # transparent.show()
 
                 # change alpha of base image at corresponding locations
-                na = np.array(base_image).astype(np.float)
+                na = np.array(base_image).astype(float)
                 # Halve all alpha values
                 # location = (max(0, min(location[0], na.shape[1])), max(0, min(location[1], na.shape[0]))) # if location is negative, clip at 0
                 # TODO: Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
@@ -206,7 +206,7 @@ def add_watermark(
                 transparent = Image.alpha_composite(transparent, base_image)
 
             elif position == "multiple":
-                na = np.array(base_image).astype(np.float)
+                na = np.array(base_image).astype(float)
                 for w in [int(base_image.size[0] * i) for i in [0.25, 0.5, 0.75]]:
                     for h in [int(base_image.size[1] * i) for i in [0.25, 0.5, 0.75]]:
                         location = (int(w - w_width / 2), int(h - w_height / 2))
@@ -224,7 +224,7 @@ def add_watermark(
                         ] *= alpha
                 base_image = Image.fromarray(na.astype(np.uint8))
                 # use numpy
-                na = np.array(transparent).astype(np.float)
+                na = np.array(transparent).astype(float)
                 # Halve all alpha values
                 # na[..., 3] *=0.5
                 transparent = Image.fromarray(na.astype(np.uint8))
@@ -252,14 +252,14 @@ def add_watermark(
                 transparent.paste(img_watermark, location)
                 # transparent.show()
                 # use numpy
-                na = np.array(transparent).astype(np.float)
+                na = np.array(transparent).astype(float)
                 # Halve all alpha values
                 # na[..., 3] *=0.5
                 transparent = Image.fromarray(na.astype(np.uint8))
                 # transparent.show()
 
                 # change alpha of base image at corresponding locations
-                na = np.array(base_image).astype(np.float)
+                na = np.array(base_image).astype(float)
                 # Halve all alpha values
                 # location = (max(0, min(location[0], na.shape[1])), max(0, min(location[1], na.shape[0]))) # if location is negative, clip at 0
                 # TODO: Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
