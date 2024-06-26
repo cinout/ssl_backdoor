@@ -554,7 +554,7 @@ def train(train_loader, model, optimizer, epoch, args):
 
                     res = []
                     for k in topk:
-                        correct_k = correct[:k].view(-1).float().sum()
+                        correct_k = correct[:k].reshape(-1).float().sum()
                         res.append(correct_k.mul_(100.0 / batch_size))
                     return res
 
