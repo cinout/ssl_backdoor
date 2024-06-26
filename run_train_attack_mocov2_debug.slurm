@@ -53,6 +53,7 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --save-folder-root haitian \
     --experiment-id trytrykan \
     --data ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
+    --workers 3 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
