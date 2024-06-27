@@ -12,7 +12,7 @@
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
 #SBATCH --time=0-22:30:00
-###TODO: change time
+
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
@@ -22,7 +22,7 @@
 
 #SBATCH --mem=60G
 
-export WORLD_SIZE=2   ### FIXME: update world size: nodes x ntasks-per-node
+export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 export MASTER_PORT=28400
 echo ">>> NODELIST="${SLURM_NODELIST}
 master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)

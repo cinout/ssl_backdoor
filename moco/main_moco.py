@@ -372,6 +372,8 @@ def main_worker(index, args):
             )
     loss_terms = "\n\t + ".join(loss_terms)
     print(f"=> Optimize:\n\t{loss_terms}")
+
+    # FIXME [DONE]: start building model
     model = moco.builder.MoCo(
         models.__dict__[args.arch],
         args.moco_dim,
@@ -383,7 +385,7 @@ def main_worker(index, args):
         unif_intra_batch=not args.moco_unif_no_intra_batch,
         mlp=args.mlp,
     )
-    print(model)
+    # print(model)
 
     model.cuda(args.gpu)
     if args.distributed:
@@ -488,6 +490,7 @@ def create_data_loader(args):
         ]
 
     # Filelist loading
+    # FIXME [DONE]: data is loaded from filelist created during poisoning
     train_dataset = moco.dataset.FileListDataset(
         args.data, moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     )
@@ -536,7 +539,7 @@ def train(train_loader, model, optimizer, epoch, args):
     )  # lam for closure
     loss_meters.extend([meter, utils.ProgressMeter.BR])
 
-    if args.moco_contr_w != 0:
+    if args.moco_contr_w != 0:  # 1 True
         meter = utils.AverageMeter("Contr-Loss", ".4e")
         acc1 = utils.AverageMeter("Contr-Acc1", "6.2f")
         acc5 = utils.AverageMeter("Contr-Acc5", "6.2f")
@@ -569,14 +572,14 @@ def train(train_loader, model, optimizer, epoch, args):
         loss_updates.append(f(meter, acc1, acc5))
         loss_meters.extend([meter, acc1, acc5, utils.ProgressMeter.BR])
 
-    if args.moco_align_w != 0:
+    if args.moco_align_w != 0:  # 0 False
         meter = utils.AverageMeter("Align-Loss", ".4e")
         loss_updates.append(
             (lambda m: lambda losses, _, bs: m.update(losses.loss_align, bs))(meter)
         )  # lam for closure
         loss_meters.append(meter)
 
-    if args.moco_unif_w != 0:
+    if args.moco_unif_w != 0:  # 0 False
         meter = utils.AverageMeter("Unif-Loss", ".4e")
         loss_updates.append(
             (lambda m: lambda losses, _, bs: m.update(losses.loss_unif))(meter)
