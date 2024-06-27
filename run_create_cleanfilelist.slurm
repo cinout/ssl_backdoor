@@ -24,9 +24,8 @@ cd poison-generation
 cd scripts
 
 python create_dataset_filelist.py \
-  --data_root ../../dataset/Imagenet100 \
-  --output_file_root ../../dataset \
-
+  --data-root ../../dataset/Imagenet100 \
+  --output-file-root ../../dataset \
 
 ##Log this job's resource usage stats### 
 my-job-stats -a -n -s
