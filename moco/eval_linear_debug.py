@@ -29,6 +29,8 @@ from PIL import Image
 import numpy as np
 from moco.dataset import FileListDataset
 
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 parser = argparse.ArgumentParser(description="Linear evaluation of contrastive model")
 parser.add_argument(
     "-j",
@@ -210,7 +212,7 @@ def get_model(arch, wts_path):
     if "moco" in arch:
         model = models.__dict__[arch.replace("moco_", "")]()
         model.fc = nn.Sequential()
-        sd = torch.load(wts_path)["state_dict"]
+        sd = torch.load(wts_path, map_location=device)["state_dict"]
         sd = {k.replace("module.", ""): v for k, v in sd.items()}
         sd = {k: v for k, v in sd.items() if "encoder_q" in k}
         sd = {k: v for k, v in sd.items() if "fc" not in k}
@@ -231,6 +233,16 @@ def get_model(arch, wts_path):
 
 def main_worker(args):
     global best_acc1
+
+    backbone = get_model(args.arch, args.weights)
+    # backbone = nn.DataParallel(backbone).cuda()
+    backbone.eval()
+
+    print(backbone)
+    for name, param in backbone.named_parameters():
+        print(name, param.data)
+
+    exit()
 
     # Data loading code
     normalize = transforms.Normalize(
@@ -305,10 +317,6 @@ def main_worker(args):
             num_workers=args.workers,
             pin_memory=True,
         )
-
-    backbone = get_model(args.arch, args.weights)
-    backbone = nn.DataParallel(backbone).cuda()
-    backbone.eval()
 
     print("Calculating features")
     if args.evaluate:
