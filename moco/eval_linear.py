@@ -256,7 +256,7 @@ def main_worker(args):
     )
 
     if not args.evaluate:
-        # FIXME [DONE]: read train images (no poison), train_file: under poison-generation/data/{experimentID}/..../train/ folder
+        # FIXME [DONE]: read train images (no poison)
         train_dataset = FileListDataset(args.train_file, train_transform)
         train_loader = DataLoader(
             train_dataset,
