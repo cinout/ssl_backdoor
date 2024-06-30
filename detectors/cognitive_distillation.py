@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 
-# TODO: update this file
 def total_variation_loss(img, weight=1):
     b, c, h, w = img.size()
     tv_h = torch.pow(img[:, :, 1:, :] - img[:, :, :-1, :], 2).sum(dim=[1, 2, 3])
@@ -35,21 +34,18 @@ class CognitiveDistillation(nn.Module):
         mask = torch.ones(b, self.mask_channel, h, w).to(images.device)
         mask_param = nn.Parameter(mask)
         optimizerR = torch.optim.Adam([mask_param], lr=self.lr, betas=(0.1, 0.1))
-        if texts is None:
-            _, vision_features, _ = model(images)
-        else:
-            vision_features = model.encode_image(images)
 
-        for _ in range(self.num_steps):
+        vision_features = model(images)
+
+        for step in range(self.num_steps):
             optimizerR.zero_grad()
             mask = self.get_raw_mask(mask_param).to(images.device)
             x_adv = images * mask + (1 - mask) * torch.rand(b, c, 1, 1).to(
                 images.device
             )
-            if texts is None:
-                _, adv_features, _ = model(x_adv)
-            else:
-                adv_features = model.encode_image(x_adv)
+
+            adv_features = model(x_adv)
+
             loss = self.l1(adv_features, vision_features.detach()).mean(dim=1)
             norm = torch.norm(mask, p=self.p, dim=[1, 2, 3])
             norm = norm * self.gamma

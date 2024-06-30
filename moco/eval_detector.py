@@ -447,21 +447,21 @@ def main_worker(args):
     else:
         raise ("Unknown Detector")
 
-    with torch.no_grad():
-        gt_all = []
-        pred_all = []
+    # with torch.no_grad():
+    gt_all = []
+    pred_all = []
 
-        for i, (path, images, target, _) in tqdm(enumerate(train_loader)):
-            gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
+    for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
+        gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
-            images = images.to(device)
-            preds = detector(backbone, images)  # [bs]
+        images = images.to(device)
+        preds = detector(backbone, images)  # [bs]
 
-            gt_all.extend(gt)
-            pred_all.extend(preds.detach().cpu().numpy())
+        gt_all.extend(gt)
+        pred_all.extend(preds.detach().cpu().numpy())
 
-        score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
-        print(f"the final AUROC score with detector {args.detector} is: {score*100}")
+    score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
+    print(f"the final AUROC score with detector {args.detector} is: {score*100}")
 
     # np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
     # np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
