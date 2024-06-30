@@ -265,6 +265,7 @@ def main_worker(args):
 
     backbone = get_model(args.arch, args.weights)
     # backbone = nn.DataParallel(backbone).cuda()
+    backbone.to(device)
     backbone.eval()
 
     # print(backbone)
