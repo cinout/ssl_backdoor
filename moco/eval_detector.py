@@ -7,7 +7,7 @@ import random
 import shutil
 import time
 import warnings
-
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -30,6 +30,7 @@ from eval_utils import (
 )
 from PIL import Image
 import numpy as np
+from sklearn.metrics import roc_auc_score
 
 from moco.dataset import FileListDataset
 from detectors.cognitive_distillation import CognitiveDistillation
@@ -152,6 +153,7 @@ parser.add_argument(
     help="file containing training image paths",
 )
 parser.add_argument("--eval_data", type=str, default="", help="eval identifier")
+parser.add_argument("--k", type=int, default=16, help="for k distance detector")
 
 
 best_acc1 = 0
@@ -180,13 +182,13 @@ def main():
         random.seed(args.seed)
         torch.manual_seed(args.seed)
         cudnn.deterministic = True
-        warnings.warn(
-            "You have chosen to seed training. "
-            "This will turn on the CUDNN deterministic setting, "
-            "which can slow down your training considerably! "
-            "You may see unexpected behavior when restarting "
-            "from checkpoints."
-        )
+        # warnings.warn(
+        #     "You have chosen to seed training. "
+        #     "This will turn on the CUDNN deterministic setting, "
+        #     "which can slow down your training considerably! "
+        #     "You may see unexpected behavior when restarting "
+        #     "from checkpoints."
+        # )
     main_worker(args)
 
 
@@ -359,6 +361,7 @@ def main_worker(args):
         shuffle=True,
         num_workers=args.workers,
         pin_memory=True,
+        drop_last=False,
     )
 
     # print("Calculating features")
@@ -438,24 +441,26 @@ def main_worker(args):
         )
     elif args.detector == "KDistance":
         detector = KDistanceDetector(
-            k=args.k, gather_distributed=args.ddp, compute_mode=compute_mode
+            k=args.k, gather_distributed=False, compute_mode=compute_mode
         )
     else:
         raise ("Unknown Detector")
 
     with torch.no_grad():
-        for i, (path, images, target, _) in enumerate(train_loader):
+        gt_all = []
+        pred_all = []
+
+        for i, (path, images, target, _) in tqdm(enumerate(train_loader)):
+            gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
+
             images = images.to(device)
-            output = backbone(images)
+            preds = detector(backbone, images)  # [bs]
 
-            print(output)
-            print(output.shape)
-            print(path)
-            exit()
+            gt_all.extend(gt)
+            pred_all.extend(preds.detach().cpu().numpy())
 
-            # target = target.cuda(non_blocking=True)
-
-            # compute output
+        score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
+        print(f"the final AUROC score with detector {args.detector} is: {score*100}")
 
     # np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
     # np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
