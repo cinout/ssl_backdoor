@@ -5,14 +5,19 @@ from torch.utils.data import DataLoader
 
 class BaseDataset(metaclass=ABCMeta):
     """
-        base class for datasets, it includes 3 types:
-            - for self-supervised training,
-            - for classifier training for evaluation,
-            - for testing
+    base class for datasets, it includes 3 types:
+        - for self-supervised training,
+        - for classifier training for evaluation,
+        - for testing
     """
 
     def __init__(
-        self, bs_train, aug_cfg, num_workers, bs_clf=1000, bs_test=1000,
+        self,
+        bs_train,
+        aug_cfg,
+        num_workers,
+        bs_clf=1000,
+        bs_test=1000,
     ):
         self.aug_cfg = aug_cfg
         self.bs_train, self.bs_clf, self.bs_test = bs_train, bs_clf, bs_test
@@ -30,7 +35,7 @@ class BaseDataset(metaclass=ABCMeta):
     def ds_test(self):
         raise NotImplementedError
 
-    # TODO: Aniruddha
+    # Aniruddha
     @abstractmethod
     def ds_test_p(self):
         raise NotImplementedError

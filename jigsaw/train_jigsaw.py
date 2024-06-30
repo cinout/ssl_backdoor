@@ -19,47 +19,102 @@ import torch.utils.data.distributed
 from resnet import resnet18
 from dataset import JigsawDataset
 
-parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
-                    help='number of data loading workers (default: 8)')
-parser.add_argument('--epochs', default=105, type=int, metavar='N',
-                    help='number of total epochs to run')
-parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
-                    help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N',
-                    help='mini-batch size (default: 128), this is the total '
-                         'batch size of all GPUs on the current node when '
-                         'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
-                    metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)',
-                    dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=50, type=int,
-                    metavar='N', help='print frequency (default: 50)')
-parser.add_argument('--perms_file', type=str, default='hamming_perms_2000_patches_9_max_avg.npy',
-                    help='file containing the jigsaw permutations to use')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
-parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                    help='evaluate model on validation set')
-parser.add_argument('--seed', default=None, type=int,
-                    help='seed for initializing training. ')
-parser.add_argument('--save', type=str, default='./output/jigsaw_exp1',
-                    help='experiment directory')
-parser.add_argument('--train_file', type=str, required=True,
-                    help='file containing training image paths')
-parser.add_argument('--val_file', type=str, required=True,
-                    help='file containing training image paths')
+parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
+parser.add_argument(
+    "-j",
+    "--workers",
+    default=8,
+    type=int,
+    metavar="N",
+    help="number of data loading workers (default: 8)",
+)
+parser.add_argument(
+    "--epochs", default=105, type=int, metavar="N", help="number of total epochs to run"
+)
+parser.add_argument(
+    "--start-epoch",
+    default=0,
+    type=int,
+    metavar="N",
+    help="manual epoch number (useful on restarts)",
+)
+parser.add_argument(
+    "-b",
+    "--batch-size",
+    default=256,
+    type=int,
+    metavar="N",
+    help="mini-batch size (default: 128), this is the total "
+    "batch size of all GPUs on the current node when "
+    "using Data Parallel or Distributed Data Parallel",
+)
+parser.add_argument(
+    "--lr",
+    "--learning-rate",
+    default=0.01,
+    type=float,
+    metavar="LR",
+    help="initial learning rate",
+    dest="lr",
+)
+parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+parser.add_argument(
+    "--wd",
+    "--weight-decay",
+    default=1e-4,
+    type=float,
+    metavar="W",
+    help="weight decay (default: 1e-4)",
+    dest="weight_decay",
+)
+parser.add_argument(
+    "-p",
+    "--print-freq",
+    default=50,
+    type=int,
+    metavar="N",
+    help="print frequency (default: 50)",
+)
+parser.add_argument(
+    "--perms_file",
+    type=str,
+    default="hamming_perms_2000_patches_9_max_avg.npy",
+    help="file containing the jigsaw permutations to use",
+)
+parser.add_argument(
+    "--resume",
+    default="",
+    type=str,
+    metavar="PATH",
+    help="path to latest checkpoint (default: none)",
+)
+parser.add_argument(
+    "-e",
+    "--evaluate",
+    dest="evaluate",
+    action="store_true",
+    help="evaluate model on validation set",
+)
+parser.add_argument(
+    "--seed", default=None, type=int, help="seed for initializing training. "
+)
+parser.add_argument(
+    "--save", type=str, default="./output/jigsaw_exp1", help="experiment directory"
+)
+parser.add_argument(
+    "--train_file", type=str, required=True, help="file containing training image paths"
+)
+parser.add_argument(
+    "--val_file", type=str, required=True, help="file containing training image paths"
+)
 
 best_acc1 = 0
 logger = None
 
 
-def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+def get_logger(
+    logpath, filepath, package_files=[], displaying=True, saving=True, debug=False
+):
     logger = logging.getLogger()
     if debug:
         level = logging.DEBUG
@@ -98,18 +153,22 @@ def main():
     args = parser.parse_args()
 
     makedirs(args.save)
-    logger = get_logger(logpath=os.path.join(args.save, 'logs'), filepath=os.path.abspath(__file__))
+    logger = get_logger(
+        logpath=os.path.join(args.save, "logs"), filepath=os.path.abspath(__file__)
+    )
     logger.info(args)
 
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
         cudnn.deterministic = True
-        warnings.warn('You have chosen to seed training. '
-                      'This will turn on the CUDNN deterministic setting, '
-                      'which can slow down your training considerably! '
-                      'You may see unexpected behavior when restarting '
-                      'from checkpoints.')
+        warnings.warn(
+            "You have chosen to seed training. "
+            "This will turn on the CUDNN deterministic setting, "
+            "which can slow down your training considerably! "
+            "You may see unexpected behavior when restarting "
+            "from checkpoints."
+        )
 
     # Data loading code
     trainfile = args.train_file
@@ -120,13 +179,19 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True)
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
 
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
 
     model = resnet18(num_classes=len(train_dataset.classes))
     model = nn.DataParallel(model).cuda()
@@ -140,41 +205,44 @@ def main():
     bn_params = []
 
     for name, param in model.named_parameters():
-        if name.find('bn') > -1:
+        if name.find("bn") > -1:
             bn_params.append(param)
-        elif name.endswith('bias'):
+        elif name.endswith("bias"):
             b_params.append(param)
-        elif name.endswith('weight'):
+        elif name.endswith("weight"):
             w_params.append(param)
 
     params = [
-        {'params': w_params},
-        {'params': b_params,  'weight_decay': 0},
-        {'params': bn_params, 'weight_decay': 0},
+        {"params": w_params},
+        {"params": b_params, "weight_decay": 0},
+        {"params": bn_params, "weight_decay": 0},
     ]
 
-    optimizer = torch.optim.SGD(params, args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay,
-                                nesterov=False)
-
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer,
-        [30, 60, 90, 100]
+    optimizer = torch.optim.SGD(
+        params,
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+        nesterov=False,
     )
+
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [30, 60, 90, 100])
 
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
             logger.info("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            best_acc1 = checkpoint['best_acc1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
-            logger.info("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
+            args.start_epoch = checkpoint["epoch"]
+            best_acc1 = checkpoint["best_acc1"]
+            model.load_state_dict(checkpoint["state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            logger.info(
+                "=> loaded checkpoint '{}' (epoch {})".format(
+                    args.resume, checkpoint["epoch"]
+                )
+            )
         else:
             logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
@@ -186,7 +254,7 @@ def main():
 
     for epoch in range(args.start_epoch, args.epochs):
         # lr_scheduler.step(epoch)
-        logger.info('LR: ' + ' '.join(str(pg['lr']) for pg in optimizer.param_groups))
+        logger.info("LR: " + " ".join(str(pg["lr"]) for pg in optimizer.param_groups))
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
@@ -199,25 +267,30 @@ def main():
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
-            'best_acc1': best_acc1,
-            'optimizer': optimizer.state_dict(),
-            'lr_scheduler': lr_scheduler.state_dict()
-        }, is_best, args.save)
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": model.state_dict(),
+                "best_acc1": best_acc1,
+                "optimizer": optimizer.state_dict(),
+                "lr_scheduler": lr_scheduler.state_dict(),
+            },
+            is_best,
+            args.save,
+        )
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
+    batch_time = AverageMeter("Time", ":6.3f")
+    data_time = AverageMeter("Data", ":6.3f")
+    losses = AverageMeter("Loss", ":.4e")
+    top1 = AverageMeter("Acc@1", ":6.2f")
+    top5 = AverageMeter("Acc@5", ":6.2f")
     progress = ProgressMeter(
         len(train_loader),
         [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
+        prefix="Epoch: [{}]".format(epoch),
+    )
 
     # switch to train mode
     model.train()
@@ -253,14 +326,13 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
 
 def validate(val_loader, model, criterion, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
+    batch_time = AverageMeter("Time", ":6.3f")
+    losses = AverageMeter("Loss", ":.4e")
+    top1 = AverageMeter("Acc@1", ":6.2f")
+    top5 = AverageMeter("Acc@5", ":6.2f")
     progress = ProgressMeter(
-        len(val_loader),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
+        len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
+    )
 
     # switch to evaluate mode
     model.eval()
@@ -290,27 +362,29 @@ def validate(val_loader, model, criterion, args):
             if i % args.print_freq == 0:
                 progress.display(i)
 
-        # TODO: this should also be done with the ProgressMeter
-        logger.info(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
+        # this should also be done with the ProgressMeter
+        logger.info(
+            " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
+        )
 
     val_output = np.vstack(val_output)
-    np.save(os.path.join(args.save, 'output.npy'), val_output)
+    np.save(os.path.join(args.save, "output.npy"), val_output)
 
     return top1.avg
 
 
 def save_checkpoint(state, is_best, save_dir):
-    ckpt_path = os.path.join(save_dir, 'checkpoint.pth.tar')
+    ckpt_path = os.path.join(save_dir, "checkpoint.pth.tar")
     torch.save(state, ckpt_path)
     if is_best:
-        best_ckpt_path = os.path.join(save_dir, 'model_best.pth.tar')
+        best_ckpt_path = os.path.join(save_dir, "model_best.pth.tar")
         shutil.copyfile(ckpt_path, best_ckpt_path)
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
+
+    def __init__(self, name, fmt=":f"):
         self.name = name
         self.fmt = fmt
         self.reset()
@@ -328,7 +402,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
     def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
 
@@ -341,12 +415,12 @@ class ProgressMeter(object):
     def display(self, batch):
         entries = [self.prefix + self.batch_fmtstr.format(batch)]
         entries += [str(meter) for meter in self.meters]
-        logger.info('\t'.join(entries))
+        logger.info("\t".join(entries))
 
     def _get_batch_fmtstr(self, num_batches):
         num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
+        fmt = "{:" + str(num_digits) + "d}"
+        return "[" + fmt + "/" + fmt.format(num_batches) + "]"
 
 
 def accuracy(output, target, topk=(1,)):
@@ -366,5 +440,5 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

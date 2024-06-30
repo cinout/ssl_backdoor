@@ -8,7 +8,10 @@ import torch
 from torch import nn
 from torchvision import models
 
-def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+
+def get_logger(
+    logpath, filepath, package_files=[], displaying=True, saving=True, debug=False
+):
     logger = logging.getLogger()
     if debug:
         level = logging.DEBUG
@@ -34,10 +37,12 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
 
     return logger
 
-# TODO: Aniruddha use for eval 
+
+# Aniruddha use for eval
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
+
+    def __init__(self, name, fmt=":f"):
         self.name = name
         self.fmt = fmt
         self.reset()
@@ -55,7 +60,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
     def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
 
@@ -68,12 +73,13 @@ class ProgressMeter(object):
     def display(self, batch):
         entries = [self.prefix + self.batch_fmtstr.format(batch)]
         entries += [str(meter) for meter in self.meters]
-        return '\t'.join(entries)
+        return "\t".join(entries)
 
     def _get_batch_fmtstr(self, num_batches):
         num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
+        fmt = "{:" + str(num_digits) + "d}"
+        return "[" + fmt + "/" + fmt.format(num_batches) + "]"
+
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
@@ -91,24 +97,26 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+
 arch_to_key = {
-    'alexnet': 'alexnet',
-    'alexnet_moco': 'alexnet',
-    'resnet18': 'resnet18',
-    'resnet50': 'resnet50',
-    'rotnet_r50': 'resnet50',
-    'rotnet_r18': 'resnet18',
-    'moco_resnet18': 'resnet18',
-    'resnet_moco': 'resnet50',
+    "alexnet": "alexnet",
+    "alexnet_moco": "alexnet",
+    "resnet18": "resnet18",
+    "resnet50": "resnet50",
+    "rotnet_r50": "resnet50",
+    "rotnet_r18": "resnet18",
+    "moco_resnet18": "resnet18",
+    "resnet_moco": "resnet50",
 }
 
 model_names = list(arch_to_key.keys())
 
+
 def save_checkpoint(state, is_best, save_dir):
-    ckpt_path = os.path.join(save_dir, 'checkpoint.pth.tar')
+    ckpt_path = os.path.join(save_dir, "checkpoint.pth.tar")
     torch.save(state, ckpt_path)
     if is_best:
-        best_ckpt_path = os.path.join(save_dir, 'model_best.pth.tar')
+        best_ckpt_path = os.path.join(save_dir, "model_best.pth.tar")
         shutil.copyfile(ckpt_path, best_ckpt_path)
 
 

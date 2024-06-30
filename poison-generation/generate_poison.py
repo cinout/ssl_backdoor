@@ -196,7 +196,7 @@ def add_watermark(
                 na = np.array(base_image).astype(float)
                 # Halve all alpha values
                 # location = (max(0, min(location[0], na.shape[1])), max(0, min(location[1], na.shape[0]))) # if location is negative, clip at 0
-                # TODO: Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
+                # Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
                 na[..., 3][
                     location[1] : (location[1] + w_height),
                     location[0] : (location[0] + w_width),
@@ -262,7 +262,7 @@ def add_watermark(
                 na = np.array(base_image).astype(float)
                 # Halve all alpha values
                 # location = (max(0, min(location[0], na.shape[1])), max(0, min(location[1], na.shape[0]))) # if location is negative, clip at 0
-                # TODO: Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
+                # Aniruddha I ensure that left upper location will never be negative. So I removed clipping.
                 na[..., 3][
                     location[1] : (location[1] + w_height),
                     location[0] : (location[0] + w_width),
