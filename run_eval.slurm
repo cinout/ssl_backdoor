@@ -11,7 +11,8 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=1-23:30:00
+#SBATCH --time=0-03:30:00
+
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
