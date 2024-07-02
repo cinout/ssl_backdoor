@@ -345,7 +345,7 @@ def main_worker(args):
         nn.Linear(get_channels(args.arch), 100),
         # nn.Linear(get_channels(args.arch), 1000),         # for ImageNet
     )
-    linear = linear.cuda()
+    linear = linear.to(device)
 
     optimizer = torch.optim.SGD(
         linear.parameters(),
@@ -361,7 +361,7 @@ def main_worker(args):
     if args.resume:
         if os.path.isfile(args.resume):
             logger.info("=> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
+            checkpoint = torch.load(args.resume, map_location=device)
             args.start_epoch = checkpoint["epoch"]
             linear.load_state_dict(checkpoint["state_dict"])
             optimizer.load_state_dict(checkpoint["optimizer"])
@@ -383,15 +383,14 @@ def main_worker(args):
             imagenet_metadata_dict = {}
             for line in data:
                 wnid, classname = line.split("\t")[0], line.split("\t")[1]
-                imagenet_metadata_dict[wnid] = classname
+                imagenet_metadata_dict[wnid] = classname  # n01xxx -> name of class
 
         with open("imagenet100_classes.txt", "r") as f:
             # classes of ImageNet-100
             class_dir_list = [l.strip() for l in f.readlines()]
-            class_dir_list = sorted(class_dir_list)
+            class_dir_list = sorted(class_dir_list)  # idx -> n01xxx
         # class_dir_list = sorted(os.listdir('/datasets/imagenet/train'))               # for ImageNet
 
-        # FIXME: where validation happens
         acc1, _, conf_matrix_clean = validate_conf_matrix(
             val_loader, backbone, linear, args
         )
@@ -427,7 +426,7 @@ def main_worker(args):
                         conf_matrix_clean[target][target],
                         conf_matrix_clean[:, target].sum()
                         - conf_matrix_clean[target][target],
-                    )
+                    )  # I guess in the matrix, row must be GT, col is PRED
                 )
                 f.write(
                     "{},{}\n".format(
@@ -618,16 +617,20 @@ def validate_conf_matrix(val_loader, backbone, linear, args):
     with torch.no_grad():
         end = time.time()
         for i, (_, images, target, _) in enumerate(val_loader):
-            images = images.cuda(non_blocking=True)
-            target = target.cuda(non_blocking=True)
+            images = images.to(device)
+            target = target.to(device)  # shape:[bs], value: GT class index 0-99
 
             # compute output
             output = backbone(images)
-            output = linear(output)
+            output = linear(
+                output
+            )  # shape:[bs, 100==#classes], value: probablity of each class
             loss = F.cross_entropy(output, target)
 
-            # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = accuracy(
+                output, target, topk=(1, 5)
+            )  # each, shape: [1], value: acc
+
             losses.update(loss.item(), images.size(0))
             top1.update(acc1[0], images.size(0))
             top5.update(acc5[0], images.size(0))
@@ -639,13 +642,14 @@ def validate_conf_matrix(val_loader, backbone, linear, args):
             if i % args.print_freq == 0:
                 logger.info(progress.display(i))
 
-            _, pred = output.topk(1, 1, True, True)
+            _, pred = output.topk(
+                1, 1, True, True
+            )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
             pred_numpy = pred.cpu().numpy()
             target_numpy = target.cpu().numpy()
-            # print(target_numpy.shape, pred_numpy.shape)
-            # pred = pred.t()
+
             for elem in range(target.size(0)):
-                # update confusion matrix
+                # update confusion matrix: for each GT class, what is the predicted class
                 conf_matrix[target_numpy[elem], int(pred_numpy[elem])] += 1
 
         # this should also be done with the ProgressMeter

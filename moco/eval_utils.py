@@ -87,13 +87,22 @@ def accuracy(output, target, topk=(1,)):
         maxk = max(topk)
         batch_size = target.size(0)
 
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-        # pdb.set_trace()
+        _, pred = output.topk(
+            maxk, 1, True, True
+        )  # k=maxk, dim=1, largest, sorted; pred is the indices of largest class
+        pred = pred.t()  # shape: [maxk, bs], values: cls indices
+        # what it means is that, for each column (i.e., each sampel in a batch), from top to bottom, is a sorted list of predicted classes, with the highest prediction on the first row, and then next row, and so on
+
+        correct = pred.eq(
+            target.view(1, -1).expand_as(pred)
+        )  # shape: [maxk, bs], values: True/False
+        #  what it means is that, for each column, we are calculating at WHICH ROW does it gives the correct prediction (i.e., gets TRUE)
+
         res = []
         for k in topk:
-            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            correct_k = (
+                correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            )  # k=1 is harder, k=5 is easier (as long as your first 5 prediction has one correct prediction, you will get the score)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
