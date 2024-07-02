@@ -29,6 +29,8 @@ from PIL import Image
 import numpy as np
 from moco.dataset import FileListDataset
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 parser = argparse.ArgumentParser(description="Linear evaluation of contrastive model")
 parser.add_argument(
     "-j",
@@ -210,7 +212,7 @@ def get_model(arch, wts_path):
     if "moco" in arch:
         model = models.__dict__[arch.replace("moco_", "")]()
         model.fc = nn.Sequential()
-        sd = torch.load(wts_path)["state_dict"]
+        sd = torch.load(wts_path, map_location=device)["state_dict"]
         sd = {k.replace("module.", ""): v for k, v in sd.items()}
         sd = {k: v for k, v in sd.items() if "encoder_q" in k}
         sd = {k: v for k, v in sd.items() if "fc" not in k}
@@ -285,6 +287,15 @@ def main_worker(args):
         )
 
     if args.evaluate:
+        # what's the purpose of this? -- get mean and std
+        train_val_loader = torch.utils.data.DataLoader(
+            FileListDataset(args.train_file, val_transform),
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.workers,
+            pin_memory=True,
+        )
+
         val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.val_file, val_transform),
             batch_size=args.batch_size,
@@ -307,7 +318,8 @@ def main_worker(args):
         )
 
     backbone = get_model(args.arch, args.weights)
-    backbone = nn.DataParallel(backbone).cuda()
+    if device == "cuda":
+        backbone = nn.DataParallel(backbone).cuda()
     backbone.eval()
 
     print("Calculating features")
@@ -317,6 +329,7 @@ def main_worker(args):
     else:
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.save)
     if args.load_cache and os.path.exists(cached_feats):
+
         # used in evaluate mode
         logger.info("load train feats from cache =>")
         # FIXME [DONE]: what are the uses of train_var, train_mean? -- Used in FullBatchNorm()
@@ -325,7 +338,7 @@ def main_worker(args):
         train_feats, _ = get_feats(train_val_loader, backbone, args)
         train_var, train_mean = torch.var_mean(train_feats, dim=0)
         torch.save((train_var, train_mean), cached_feats)
-
+    print("-- finish with Calculating features")
     linear = nn.Sequential(
         Normalize(),
         FullBatchNorm(train_var, train_mean),
@@ -654,7 +667,8 @@ def get_feats(loader, model, args):
     with torch.no_grad():
         end = time.time()
         for i, (_, images, target, _) in enumerate(loader):
-            images = images.cuda(non_blocking=True)
+            # images = images.cuda(non_blocking=True)
+            images = images.to(device)
             cur_targets = target.cpu()
             # Normalize for MoCo, BYOL etc.
             cur_feats = F.normalize(model(images), dim=1).cpu()
