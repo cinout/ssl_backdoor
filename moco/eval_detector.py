@@ -197,7 +197,7 @@ def main(args):
 
     # with torch.no_grad():
     gt_all = []
-    pred_all = []
+    pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
 
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
@@ -207,9 +207,6 @@ def main(args):
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
-
-        # TODO: remove later
-        print(len(gt_all), len(pred_all))
 
     score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
     print(f"the final AUROC score with detector {args.detector} is: {score*100}")

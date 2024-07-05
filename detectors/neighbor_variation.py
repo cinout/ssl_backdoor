@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 
-# TODO: update
 class NeighborVariation(nn.Module):
     def __init__(self):
         super().__init__()
