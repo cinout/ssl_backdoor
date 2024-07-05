@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-08:00:00
+#SBATCH --time=0-05:00:00
 
 
 #SBATCH --nodes=1
