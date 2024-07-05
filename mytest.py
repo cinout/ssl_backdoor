@@ -9,5 +9,5 @@ neighbors = torch.randint(0, 100, size=(batch_size * num_views,))
 print(neighbors)
 
 
-neighbors = neighbors.reshape(num_views, batch_size)
+neighbors = neighbors.reshape(num_views, -1)
 print(neighbors)

@@ -238,7 +238,7 @@ def main(args):
             preds = detector(
                 backbone, images
             )  # [bs*num_views], each one is anomaly score
-            preds = preds.reshape(args.num_views, args.batch_size)
+            preds = preds.reshape(args.num_views, -1)
             preds = torch.mean(preds, dim=0)
         else:
             images = images.to(device)
