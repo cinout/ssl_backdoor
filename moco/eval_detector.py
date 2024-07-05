@@ -33,6 +33,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 from moco.dataset import FileListDataset
+import moco.loader
 from detectors.cognitive_distillation import CognitiveDistillation
 from detectors.k_distance import KDistanceDetector
 from detectors.neighbor_variation import NeighborVariation
@@ -60,7 +61,7 @@ parser.add_argument(
 parser.add_argument("--detector", required=True, type=str)
 parser.add_argument(
     "-b",
-    "--batch-size",
+    "--batch_size",
     default=256,
     type=int,
     metavar="N",
@@ -87,6 +88,13 @@ parser.add_argument(
 parser.add_argument("--k", type=int, default=16, help="for k distance detector")
 parser.add_argument(
     "--topk", type=int, default=1, help="for NeighborVariation detector"
+)
+parser.add_argument("--use_moco_aug", action="store_true")
+parser.add_argument(
+    "--num_views",
+    type=int,
+    default=16,
+    help="how many views are generated for each image, for NeighborVariation detector",
 )
 
 
@@ -169,12 +177,33 @@ def main(args):
         ]
     )
 
+    mocov2_augmentation = [
+        transforms.RandomResizedCrop(224, scale=(0.2, 1.0)),
+        transforms.RandomApply(
+            [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
+        ),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ]
+
     # probably need to modify this function FileListDataset to return GT anomaly
-    train_dataset = FileListDataset(args.train_file, train_transform)
+    if args.use_moco_aug:
+        train_dataset = FileListDataset(
+            args.train_file,
+            moco.loader.NCropsTransform(
+                transforms.Compose(mocov2_augmentation), args.num_views
+            ),
+        )
+    else:
+        train_dataset = FileListDataset(args.train_file, train_transform)
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=True,  # make sure it is True, as we need to study randomness's impact on detector's performance
         num_workers=args.workers,
         pin_memory=True,
         drop_last=False,
@@ -202,8 +231,18 @@ def main(args):
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
-        images = images.to(device)
-        preds = detector(backbone, images)  # [bs], each one is anomaly score
+        if args.use_moco_aug:
+            # images is a list, size is  num_views * [bs, 3, 224, 224]
+            images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
+            images = images.to(device)
+            preds = detector(
+                backbone, images
+            )  # [bs*num_views], each one is anomaly score
+            preds = preds.reshape(args.num_views, args.batch_size)
+            preds = torch.mean(preds, dim=0)
+        else:
+            images = images.to(device)
+            preds = detector(backbone, images)  # [bs], each one is anomaly score
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())

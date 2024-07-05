@@ -1,11 +1,13 @@
 import torch
 import numpy as np
 
-neighbors = torch.tensor(
-    [[20, 1, 20, 1, 20, 1, 2], [20, 3, 20, 1, 20, 1, 2], [20, 5, 20, 1, 10, 1, 4]]
-)
-x = torch.zeros([neighbors.shape[0]])
+batch_size = 4
+num_views = 8
 
-for i in range(len(neighbors)):
-    x[i] = len(neighbors[i].unique())
-print(x)
+neighbors = torch.randint(0, 100, size=(batch_size * num_views,))
+
+print(neighbors)
+
+
+neighbors = neighbors.reshape(num_views, batch_size)
+print(neighbors)
