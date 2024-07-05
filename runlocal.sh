@@ -8,4 +8,4 @@ python eval_detector.py \
     --topk 3 \
     --use_moco_aug \
     --num_views 16 \
-    --batch_size 4 \
+    --batch_size 8 \
