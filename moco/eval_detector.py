@@ -93,7 +93,7 @@ parser.add_argument("--use_moco_aug", action="store_true")
 parser.add_argument(
     "--num_views",
     type=int,
-    default=16,
+    default=4,
     help="how many views are generated for each image, for NeighborVariation detector",
 )
 
