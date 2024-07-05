@@ -535,7 +535,6 @@ def train(train_loader, backbone, linear, optimizer, epoch, args):
         loss = F.cross_entropy(output, target)
 
         # measure accuracy and record loss
-        # FIXME: where acc@k is computed
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))

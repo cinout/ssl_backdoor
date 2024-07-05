@@ -32,7 +32,7 @@ class CognitiveDistillation(nn.Module):
         model.eval()
         b, c, h, w = images.shape
         mask = torch.ones(b, self.mask_channel, h, w).to(images.device)
-        mask_param = nn.Parameter(mask)
+        mask_param = nn.Parameter(mask)  # set learnable tokens
         optimizerR = torch.optim.Adam([mask_param], lr=self.lr, betas=(0.1, 0.1))
 
         vision_features = model(images)

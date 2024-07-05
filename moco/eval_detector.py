@@ -35,6 +35,9 @@ from sklearn.metrics import roc_auc_score
 from moco.dataset import FileListDataset
 from detectors.cognitive_distillation import CognitiveDistillation
 from detectors.k_distance import KDistanceDetector
+from detectors.neighbor_variation import NeighborVariation
+
+from resnet import resnet
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -82,6 +85,9 @@ parser.add_argument(
     help="file containing training image paths (contains anomaly/poisoned image)",
 )
 parser.add_argument("--k", type=int, default=16, help="for k distance detector")
+parser.add_argument(
+    "--topk", type=int, default=1, help="for NeighborVariation detector"
+)
 
 
 def load_weights(model, wts_path):
@@ -106,16 +112,20 @@ def load_weights(model, wts_path):
     model.load_state_dict(state_dict)
 
 
-def get_model(arch, wts_path):
+def get_model(arch, wts_path, detector, topk):
     if "moco" in arch:
-        model = models.__dict__[arch.replace("moco_", "")]()
+        # model = models.__dict__[arch.replace("moco_", "")]()
+        model = resnet.__dict__[arch.replace("moco_", "")](
+            reveal_internal=detector == "NeighborVariation", topk=topk
+        )
         model.fc = nn.Sequential()
+
         sd = torch.load(wts_path, map_location=device)["state_dict"]
-        sd = {k.replace("module.", ""): v for k, v in sd.items()}
-        sd = {k: v for k, v in sd.items() if "encoder_q" in k}
-        sd = {k: v for k, v in sd.items() if "fc" not in k}
-        sd = {k.replace("encoder_q.", ""): v for k, v in sd.items()}
-        model.load_state_dict(sd, strict=True)
+        sd = {k.replace("module.", ""): v for k, v in sd.items()}  # remove prefix
+        sd = {k: v for k, v in sd.items() if "encoder_q" in k}  # use query part
+        sd = {k: v for k, v in sd.items() if "fc" not in k}  # no fc layer
+        sd = {k.replace("encoder_q.", ""): v for k, v in sd.items()}  # remove prefix
+        model.load_state_dict(sd, strict=False)
     elif "resnet" in arch:
         model = models.__dict__[arch]()
         model.fc = nn.Sequential()
@@ -130,6 +140,9 @@ def get_model(arch, wts_path):
 
 
 def main(args):
+    print(
+        "\n".join("%s: %s" % (k, str(v)) for k, v in sorted(dict(vars(args)).items()))
+    )
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -138,7 +151,7 @@ def main(args):
         np.random.seed(args.seed)
         cudnn.deterministic = True
 
-    backbone = get_model(args.arch, args.weights)
+    backbone = get_model(args.arch, args.weights, args.detector, args.topk)
     # backbone = nn.DataParallel(backbone).cuda()
     backbone.to(device)
     backbone.eval()
@@ -176,6 +189,9 @@ def main(args):
         detector = KDistanceDetector(
             k=args.k, gather_distributed=False, compute_mode=compute_mode
         )
+
+    elif args.detector == "NeighborVariation":
+        detector = NeighborVariation()
     else:
         raise ("Unknown Detector")
 
@@ -187,7 +203,7 @@ def main(args):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
         images = images.to(device)
-        preds = detector(backbone, images)  # [bs]
+        preds = detector(backbone, images)  # [bs], each one is anomaly score
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
