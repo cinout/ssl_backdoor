@@ -1,8 +1,9 @@
 import torch
 import numpy as np
 
-input1 = torch.randn(100, 128)
-input2 = torch.randn(100, 128)
-
-output = input1 @ input2.T
-print(output.shape)
+neighbors = torch.tensor(
+    [[20, 1, 20, 1, 20, 1, 2], [20, 3, 20, 1, 20, 1, 2], [20, 5, 20, 1, 10, 1, 4]]
+)
+print(neighbors.shape)
+unique_values = torch.unique(neighbors, dim=-1)
+print(unique_values)

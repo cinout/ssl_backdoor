@@ -9,8 +9,11 @@ class NeighborVariation(nn.Module):
         super().__init__()
 
     def forward(self, model, images):
-        vision_features, neighbors = model(images)  # shape: [bs, 512]
+        vision_features, neighbors = model(images)
 
-        _, counts = torch.unique(neighbors, return_counts=True)
+        x = torch.zeros([neighbors.shape[0]])
 
-        return -1 * counts
+        for i in range(len(neighbors)):
+            x[i] = len(neighbors[i].unique())
+
+        return -1 * x
