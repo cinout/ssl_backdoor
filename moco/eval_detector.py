@@ -228,6 +228,9 @@ def main(args):
     gt_all = []
     pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
 
+    # TODO: comment out
+    torch.set_printoptions(threshold=10000)
+
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
