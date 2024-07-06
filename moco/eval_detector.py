@@ -231,19 +231,32 @@ def main(args):
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
+        # TODO: remove this part
+        if 1 in gt:
+            print(f"iteration: {i}")
+        else:
+            continue
+        print("=================")
+        print("gt")
+        print(gt)
+
         if args.use_moco_aug:
             # images is a list, size is  num_views * [bs, 3, 224, 224]
             images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
             images = images.to(device)
             preds = detector(
-                backbone, images
+                backbone, images, args
             )  # [bs*num_views], each one is anomaly score
             preds = preds.reshape(args.num_views, -1)
+            print("preds")
+            print(preds)
             preds = torch.mean(preds, dim=0)
         else:
             images = images.to(device)
             preds = detector(backbone, images)  # [bs], each one is anomaly score
 
+        print("preds_mean")
+        print(preds)
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
 

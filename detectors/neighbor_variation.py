@@ -7,11 +7,20 @@ class NeighborVariation(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, model, images):
+    def forward(self, model, images, args):
         vision_features, neighbors = model(images)
 
-        print(neighbors)
-        exit()
+        total_bs = neighbors.shape[0]
+        actual_bs = total_bs / args.num_views
+
+        # TODO: remove later
+        nn_from_same_image = torch.zeros(
+            size=(neighbors.shape[0], neighbors.shape[0]), dtype=torch.bool
+        )
+        for i in range(len(neighbors)):
+            nn_from_same_image[i] = neighbors[i, :] % actual_bs == i % actual_bs
+        print("nn_from_same_image")
+        print(nn_from_same_image)
 
         x = torch.zeros([neighbors.shape[0]])
 
