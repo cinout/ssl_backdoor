@@ -43,7 +43,7 @@ python eval_detector.py \
     --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     --detector NeighborVariation \
     --use_moco_aug \
-    --num_views 4 \
+    --num_views 2 \
     --topk 16 \
 
 ##Log this job's resource usage stats###
