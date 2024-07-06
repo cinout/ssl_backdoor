@@ -240,26 +240,28 @@ def main(args):
         else:
             continue
         print("=================")
-        print("gt")
-        print(gt)
 
         if args.use_moco_aug:
             # images is a list, size is  num_views * [bs, 3, 224, 224]
             images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
             images = images.to(device)
             preds = detector(
-                backbone, images, args
+                backbone, images, args, gt
             )  # [bs*num_views], each one is anomaly score
             preds = preds.reshape(args.num_views, -1)
-            print("preds")
+            print(">>>> preds")
             print(preds)
             preds = torch.mean(preds, dim=0)
         else:
             images = images.to(device)
             preds = detector(backbone, images)  # [bs], each one is anomaly score
 
-        print("preds_mean")
+        print(">>>> preds_mean")
         print(preds)
+
+        print(">>>> gt")
+        print(gt)
+
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
 
