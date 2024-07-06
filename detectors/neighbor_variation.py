@@ -10,6 +10,9 @@ class NeighborVariation(nn.Module):
     def forward(self, model, images):
         vision_features, neighbors = model(images)
 
+        print(neighbors)
+        exit()
+
         x = torch.zeros([neighbors.shape[0]])
 
         for i in range(len(neighbors)):
