@@ -229,7 +229,7 @@ def main(args):
     pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
 
     # TODO: comment out
-    torch.set_printoptions(threshold=10000)
+    # torch.set_printoptions(threshold=10000)
 
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
@@ -256,6 +256,7 @@ def main(args):
             images = images.to(device)
             preds = detector(backbone, images)  # [bs], each one is anomaly score
 
+        # # TODO: remove this part
         # print(">>>> preds_mean")
         # print(preds)
 
