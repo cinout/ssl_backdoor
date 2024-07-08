@@ -85,9 +85,9 @@ parser.add_argument(
     required=False,
     help="file containing training image paths (contains anomaly/poisoned image)",
 )
-parser.add_argument("--k", type=int, default=16, help="for k distance detector")
+parser.add_argument("--k", type=int, default=16, help="for KDistance detector")
 parser.add_argument(
-    "--topk", type=int, default=1, help="for NeighborVariation detector"
+    "--topk", type=int, default=1, help="for NeighborVariation detector, topk neighbors"
 )
 parser.add_argument("--use_moco_aug", action="store_true")
 parser.add_argument(
