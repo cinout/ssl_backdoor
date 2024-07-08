@@ -234,12 +234,12 @@ def main(args):
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
-        # TODO: remove this part
-        if 1 in gt:
-            print(f"iteration: {i}")
-        else:
-            continue
-        print("=================")
+        # # TODO: remove this part
+        # if 1 in gt:
+        #     print(f"iteration: {i}")
+        # else:
+        #     continue
+        # print("=================")
 
         if args.use_moco_aug:
             # images is a list, size is  num_views * [bs, 3, 224, 224]
@@ -256,11 +256,11 @@ def main(args):
             images = images.to(device)
             preds = detector(backbone, images)  # [bs], each one is anomaly score
 
-        print(">>>> preds_mean")
-        print(preds)
+        # print(">>>> preds_mean")
+        # print(preds)
 
-        print(">>>> gt")
-        print(gt)
+        # print(">>>> gt")
+        # print(gt)
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
