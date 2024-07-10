@@ -5,7 +5,6 @@ from PIL import Image
 
 class FileListDataset(data.Dataset):
     def __init__(self, path_to_txt_file, transform):
-        # self.data_root = data_root
         with open(path_to_txt_file, "r") as f:
             self.file_list = f.readlines()
             self.file_list = [row.rstrip() for row in self.file_list]

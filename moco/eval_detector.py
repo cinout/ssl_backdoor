@@ -91,6 +91,11 @@ parser.add_argument(
 )
 parser.add_argument("--use_moco_aug", action="store_true")
 parser.add_argument(
+    "--use_basic_aug",
+    action="store_true",
+    help="an augmentation that makes sure the trigger can appear in most augmented images",
+)
+parser.add_argument(
     "--num_views",
     type=int,
     default=4,
@@ -189,12 +194,33 @@ def main(args):
         normalize,
     ]
 
+    basic_augmentation = [
+        transforms.RandomResizedCrop(224, scale=(0.3, 0.95), ratio=(0.2, 5)),
+        transforms.RandomApply(
+            [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
+        ),
+        transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
+        # transforms.RandomGrayscale(p=0.2),
+        # transforms.RandomHorizontalFlip(),
+        # TODO: add back later
+        transforms.ToTensor(),
+        normalize,
+    ]
+    # TODO: additional augmentation options (add one by one): https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
+
     # probably need to modify this function FileListDataset to return GT anomaly
     if args.use_moco_aug:
         train_dataset = FileListDataset(
             args.train_file,
             moco.loader.NCropsTransform(
                 transforms.Compose(mocov2_augmentation), args.num_views
+            ),
+        )
+    elif args.use_basic_aug:
+        train_dataset = FileListDataset(
+            args.train_file,
+            moco.loader.NCropsTransform(
+                transforms.Compose(basic_augmentation), args.num_views
             ),
         )
     else:
@@ -228,18 +254,17 @@ def main(args):
     gt_all = []
     pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
 
-    # TODO: comment out
+    # FIXME: comment out
     # torch.set_printoptions(threshold=10000)
 
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
-        # # TODO: remove this part
-        # if 1 in gt:
-        #     print(f"iteration: {i}")
-        # else:
-        #     continue
-        # print("=================")
+        # TODO: remove this part
+        if 1 in gt:
+            print(f"iteration {i}")
+        else:
+            continue
 
         if args.use_moco_aug:
             # images is a list, size is  num_views * [bs, 3, 224, 224]
@@ -249,19 +274,16 @@ def main(args):
                 backbone, images, args, gt
             )  # [bs*num_views], each one is anomaly score
             preds = preds.reshape(args.num_views, -1)
-            print(">>>> preds")
-            print(preds)
             preds = torch.mean(preds, dim=0)
+        elif args.use_basic_aug:
+            # TODO:
+
+            exit()
+
+            pass
         else:
             images = images.to(device)
             preds = detector(backbone, images)  # [bs], each one is anomaly score
-
-        # # TODO: remove this part
-        # print(">>>> preds_mean")
-        # print(preds)
-
-        # print(">>>> gt")
-        # print(gt)
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
