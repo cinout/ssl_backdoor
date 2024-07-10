@@ -123,6 +123,13 @@ parser.add_argument(
     default=4,
     help="how many views are generated for each image, for NeighborVariation detector",
 )
+parser.add_argument(
+    "--similarity_type",
+    type=str,
+    choices=["cosine", "raw"],
+    default="cosine",
+    help="which similarity function to use",
+)
 
 
 def load_weights(model, wts_path):

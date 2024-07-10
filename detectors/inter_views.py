@@ -21,10 +21,18 @@ class InterViews(nn.Module):
 
         # TODO: update all tasks
         if args.interview_task == "variance":
-            vision_features = vision_features / vision_features.norm(dim=2)[:, :, None]
-            similarity_matrix = vision_features @ vision_features.transpose(
-                1, 2
-            )  # [bs, n_view, n_view], diagonals are 1.00
+            if args.similarity_type == "cosine":
+                vision_features = (
+                    vision_features / vision_features.norm(dim=2)[:, :, None]
+                )
+                similarity_matrix = vision_features @ vision_features.transpose(
+                    1, 2
+                )  # [bs, n_view, n_view], diagonals are 1.00
+            elif args.similarity_type == "raw":
+                similarity_matrix = vision_features @ vision_features.transpose(1, 2)
+            else:
+                raise Exception(f"unimplemented similarity_type {args.similarity_type}")
+
             off_diag_indices = torch.triu_indices(
                 row=args.num_views, col=args.num_views, offset=1
             )
