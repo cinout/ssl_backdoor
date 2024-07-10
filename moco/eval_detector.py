@@ -19,6 +19,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.nn.functional as F
+from functools import partial
 
 from eval_utils import (
     AverageMeter,
@@ -93,7 +94,19 @@ parser.add_argument(
 parser.add_argument(
     "--aug_type",
     type=str,
-    choices=["no", "mocov2", "basic"],
+    choices=[
+        "no",
+        "mocov2",
+        "basic",
+        "basic_plus_grayscale",
+        "basic_plus_invert",
+        "basic_plus_posterize",
+        "basic_plus_solarize",
+        "basic_plus_perspective",
+        "basic_plus_rotation_flexible",
+        "basic_plus_rotation_rigid",
+        "basic_plus_elastic",
+    ],  # TODO: update here
     default="no",
     help="choose which type of augmentation to use, paried with num_views",
 )
@@ -209,32 +222,78 @@ def main(args):
             [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
         ),
         transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
-        # transforms.RandomGrayscale(p=0.2),
-        # transforms.RandomHorizontalFlip(),
+    ]
+
+    to_tensor = [
         transforms.ToTensor(),
         normalize,
     ]
-    # TODO: additional augmentation options (add one by one): https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
 
-    # probably need to modify this function FileListDataset to return GT anomaly
-    if args.aug_type == "mocov2":
-        train_dataset = FileListDataset(
-            args.train_file,
-            moco.loader.NCropsTransform(
-                transforms.Compose(mocov2_augmentation), args.num_views
-            ),
-        )
-    elif args.aug_type == "basic":
-        train_dataset = FileListDataset(
-            args.train_file,
-            moco.loader.NCropsTransform(
-                transforms.Compose(basic_augmentation), args.num_views
-            ),
-        )
-    elif args.aug_type == "no":
+    if args.aug_type == "no":
         train_dataset = FileListDataset(args.train_file, train_transform)
     else:
-        raise Exception("unimplemented augmentation option is provided")
+        # TODO: additional augmentation options (add one by one): https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
+        if args.aug_type == "mocov2":
+            augmentation = mocov2_augmentation
+        elif args.aug_type == "basic":
+            augmentation = basic_augmentation + to_tensor
+        elif args.aug_type == "basic_plus_grayscale":
+            augmentation = (
+                basic_augmentation + [transforms.RandomGrayscale(p=0.5)] + to_tensor
+            )
+        elif args.aug_type == "basic_plus_invert":
+            augmentation = (
+                basic_augmentation + [transforms.RandomInvert(p=0.5)] + to_tensor
+            )
+        elif args.aug_type == "basic_plus_posterize":
+            augmentation = (
+                basic_augmentation
+                + [transforms.RandomPosterize(bits=4, p=0.5)]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_solarize":
+            augmentation = (
+                basic_augmentation
+                + [transforms.RandomSolarize(threshold=192.0, p=0.5)]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_perspective":
+            augmentation = (
+                basic_augmentation + [transforms.RandomPerspective(p=0.5)] + to_tensor
+            )
+        elif args.aug_type == "basic_plus_rotation_flexible":
+            augmentation = (
+                basic_augmentation
+                + [transforms.RandomRotation(degrees=(-180, 180))]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_rotation_rigid":
+            degree_options = [0, 90, 180, 270]
+            degree = random.choice(degree_options)
+            augmentation = (
+                basic_augmentation
+                + [partial(transforms.functional.rotate, angle=degree)]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_elastic":
+            if random.random() < 0.5:
+                alpha = 150 * random.random() + 50.0
+                augmentation = (
+                    basic_augmentation
+                    + [transforms.ElasticTransform(alpha=alpha)]
+                    + to_tensor
+                )
+            else:
+                augmentation = basic_augmentation + to_tensor
+        else:
+            raise Exception(f"Unimplemented aug_type {args.aug_type}")
+
+        train_dataset = FileListDataset(
+            args.train_file,
+            moco.loader.NCropsTransform(
+                transforms.Compose(augmentation), args.num_views
+            ),
+        )
 
     train_loader = DataLoader(
         train_dataset,
@@ -261,11 +320,9 @@ def main(args):
     else:
         raise ("Unknown Detector")
 
-    # with torch.no_grad():
     gt_all = []
     pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
 
-    # FIXME: comment out
     # torch.set_printoptions(threshold=10000)
 
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):

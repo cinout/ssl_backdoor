@@ -4,17 +4,9 @@ from PIL import Image
 import torchvision.transforms as transforms
 from moco.moco.loader import NCropsTransform
 from moco.moco.loader import GaussianBlur
+import random
+from functools import partial
 
-bs = 4
-c = 128
-n_views = 100
-input1 = torch.randn(bs, n_views, c)
-input1 = input1 / input1.norm(dim=2)[:, :, None]
-output = input1 @ input1.transpose(1, 2)
-
-print(output)
-print(output.shape)
-exit()
 
 """
 VISUALIZE AUGMENTATION
@@ -26,6 +18,7 @@ basic_augmentation = [
         [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
     ),
     transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5),
+    transforms.ElasticTransform(alpha=200.0),
 ]
 num_views = 4
 sample_backdoored_imgs = [
