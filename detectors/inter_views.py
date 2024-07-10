@@ -19,22 +19,13 @@ class InterViews(nn.Module):
 
         # TODO: update all tasks
         if args.interview_task == "variance":
-            similarity_matrix = vision_features @ torch.permute(
-                vision_features, (0, 2, 1)
-            )  # [bs, n_views, n_views]
-            print(similarity_matrix)
-            exit()
+            vision_features = vision_features / vision_features.norm(dim=2)[:, :, None]
+            similarity_matrix = vision_features @ vision_features.transpose(
+                1, 2
+            )  # [bs, n_view, n_view], diagonals are 1.00
 
-            pass
         else:
             raise Exception(
                 f"this interview_task {args.interview_task} is unimplemented yet."
             )
         return
-
-
-def find_nearest_neighbor(features, topk):
-    f2compare = torch.mean(features, dim=(2, 3))
-    similarity = f2compare @ f2compare.T
-    _, indices = torch.topk(similarity, k=topk, dim=1, largest=True, sorted=True)
-    return indices  # [bs*n_views, topk]

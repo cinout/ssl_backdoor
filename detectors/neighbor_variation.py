@@ -33,7 +33,9 @@ class NeighborVariation(nn.Module):
             x[i] = len(neighbors[i].unique())
 
         x = -1 * x  # [bs*num_views], each one is anomaly score
-        x = x.reshape(args.num_views, -1)  # [n_views, bs]
-        x = torch.mean(x, dim=0)  # [bs]
+
+        if args.aug_type != "no":
+            x = x.reshape(args.num_views, -1)  # [n_views, bs]
+            x = torch.mean(x, dim=0)  # [bs]
 
         return x
