@@ -5,13 +5,11 @@ import torchvision.transforms as transforms
 from moco.moco.loader import NCropsTransform
 from moco.moco.loader import GaussianBlur
 
-
-input1 = torch.randn(4, 100, 128)
-
-
-# input2 = torch.randn(100, 128)
+bs = 4
+c = 128
+n_views = 100
+input1 = torch.randn(bs, n_views, c)
 input1 = input1 / input1.norm(dim=2)[:, :, None]
-# input2 = input2 / input2.norm(dim=1)[:, None]
 output = input1 @ input1.transpose(1, 2)
 
 print(output)
