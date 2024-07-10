@@ -8,10 +8,10 @@ class NeighborVariation(nn.Module):
         super().__init__()
 
     # def forward(self, model, images, args, gt):
-    def forward(self, model, images):
+    def forward(self, model, images, args):
         vision_features, neighbors = model(images)
 
-        # # TODO: remove later
+        # #  remove later
         # total_bs = neighbors.shape[0]
         # actual_bs = total_bs / args.num_views
 
@@ -32,4 +32,8 @@ class NeighborVariation(nn.Module):
         for i in range(len(neighbors)):
             x[i] = len(neighbors[i].unique())
 
-        return -1 * x
+        x = -1 * x  # [bs*num_views], each one is anomaly score
+        x = x.reshape(args.num_views, -1)  # [n_views, bs]
+        x = torch.mean(x, dim=0)  # [bs]
+
+        return x

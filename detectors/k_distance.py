@@ -29,7 +29,7 @@ class KDistanceDetector(nn.Module):
         self.gather_distributed = gather_distributed
         self.compute_mode = compute_mode
 
-    def forward(self, model, images, texts=None):
+    def forward(self, model, images, args):
         # Single modality
         vision_features = model(images)  # shape: [bs, 512]
 

@@ -63,10 +63,14 @@ def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
 
 
 def find_nearest_neighbor(features, topk):
-    f2compare = torch.mean(features, dim=(2, 3))
+    f2compare = torch.mean(features, dim=(2, 3))  # [bs*n_view, C]
+
+    f2compare = f2compare / f2compare.norm(dim=1)[:, None]  # normalized in C dimension
+
     similarity = f2compare @ f2compare.T
+
     _, indices = torch.topk(similarity, k=topk, dim=1, largest=True, sorted=True)
-    return indices  # [bs, topk]
+    return indices  # [bs*n_views, topk]
 
 
 class BasicBlock(nn.Module):
@@ -331,7 +335,7 @@ class ResNet(nn.Module):
             global nn_index
             neighbors = torch.cat(nn_index, dim=1)
             nn_index = []
-            return x, neighbors
+            return x, neighbors  # [bs*n_views, top_k*16]
         else:
 
             return x

@@ -37,6 +37,7 @@ import moco.loader
 from detectors.cognitive_distillation import CognitiveDistillation
 from detectors.k_distance import KDistanceDetector
 from detectors.neighbor_variation import NeighborVariation
+from detectors.inter_views import InterViews
 
 from resnet import resnet
 
@@ -89,11 +90,19 @@ parser.add_argument("--k", type=int, default=16, help="for KDistance detector")
 parser.add_argument(
     "--topk", type=int, default=1, help="for NeighborVariation detector, topk neighbors"
 )
-parser.add_argument("--use_moco_aug", action="store_true")
 parser.add_argument(
-    "--use_basic_aug",
-    action="store_true",
-    help="an augmentation that makes sure the trigger can appear in most augmented images",
+    "--aug_type",
+    type=str,
+    choices=["no", "mocov2", "basic"],
+    default="no",
+    help="choose which type of augmentation to use, paried with num_views",
+)
+parser.add_argument(
+    "--interview_task",
+    type=str,
+    choices=["variance", "lid", "effective_rank", "entropy", "spectral_signature"],
+    default="variance",
+    help="if using InterView detector, then what task to perform?",
 )
 parser.add_argument(
     "--num_views",
@@ -202,29 +211,30 @@ def main(args):
         transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
         # transforms.RandomGrayscale(p=0.2),
         # transforms.RandomHorizontalFlip(),
-        # TODO: add back later
         transforms.ToTensor(),
         normalize,
     ]
     # TODO: additional augmentation options (add one by one): https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
 
     # probably need to modify this function FileListDataset to return GT anomaly
-    if args.use_moco_aug:
+    if args.aug_type == "mocov2":
         train_dataset = FileListDataset(
             args.train_file,
             moco.loader.NCropsTransform(
                 transforms.Compose(mocov2_augmentation), args.num_views
             ),
         )
-    elif args.use_basic_aug:
+    elif args.aug_type == "basic":
         train_dataset = FileListDataset(
             args.train_file,
             moco.loader.NCropsTransform(
                 transforms.Compose(basic_augmentation), args.num_views
             ),
         )
-    else:
+    elif args.aug_type == "no":
         train_dataset = FileListDataset(args.train_file, train_transform)
+    else:
+        raise Exception("unimplemented augmentation option is provided")
 
     train_loader = DataLoader(
         train_dataset,
@@ -244,9 +254,10 @@ def main(args):
         detector = KDistanceDetector(
             k=args.k, gather_distributed=False, compute_mode=compute_mode
         )
-
     elif args.detector == "NeighborVariation":
         detector = NeighborVariation()
+    elif args.detector == "InterViews":
+        detector = InterViews()
     else:
         raise ("Unknown Detector")
 
@@ -260,36 +271,20 @@ def main(args):
     for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
-        # TODO: remove this part
-        if 1 in gt:
-            print(f"iteration {i}")
-        else:
-            continue
-
-        if args.use_moco_aug:
+        if args.aug_type != "no":
             # images is a list, size is  num_views * [bs, 3, 224, 224]
             images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
-            images = images.to(device)
-            preds = detector(
-                backbone, images, args, gt
-            )  # [bs*num_views], each one is anomaly score
-            preds = preds.reshape(args.num_views, -1)
-            preds = torch.mean(preds, dim=0)
-        elif args.use_basic_aug:
-            # TODO:
 
-            exit()
-
-            pass
-        else:
-            images = images.to(device)
-            preds = detector(backbone, images)  # [bs], each one is anomaly score
+        images = images.to(device)
+        preds = detector(backbone, images, args)  # [bs], each one is anomaly score
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
 
     score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
-    print(f"the final AUROC score with detector {args.detector} is: {score*100}")
+    print(
+        f"the final AUROC score with detector {args.detector} and augmentation {args.aug_type} is: {score*100}"
+    )
 
 
 if __name__ == "__main__":
