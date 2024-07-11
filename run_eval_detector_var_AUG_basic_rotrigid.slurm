@@ -1,6 +1,6 @@
 #!/bin/bash
 
-###SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100
 
 ###SBATCH --partition=gpu-a100-short
 
