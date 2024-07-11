@@ -3,6 +3,17 @@ import torch
 import torch.nn as nn
 
 
+def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_necessary"):
+    b = data.shape[0]
+    k = min(k, b - 2)
+    data = torch.flatten(data, start_dim=1)
+    reference = torch.flatten(reference, start_dim=1)
+    r = torch.cdist(data, reference, p=2, compute_mode=compute_mode)
+    a, idx = torch.sort(r, dim=1)
+    lids = -k / torch.sum(torch.log(a[:, 1:k] / a[:, k].view(-1, 1) + 1.0e-4), dim=1)
+    return lids
+
+
 class InterViews(nn.Module):
     def __init__(self):
         super().__init__()
