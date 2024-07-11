@@ -127,7 +127,7 @@ parser.add_argument(
     "--similarity_type",
     type=str,
     choices=["cosine", "raw"],
-    default="cosine",
+    default="raw",
     help="which similarity function to use",
 )
 
@@ -275,23 +275,26 @@ def main(args):
                 + to_tensor
             )
         elif args.aug_type == "basic_plus_rotation_rigid":
-            degree_options = [0, 90, 180, 270]
-            degree = random.choice(degree_options)
             augmentation = (
                 basic_augmentation
-                + [partial(transforms.functional.rotate, angle=degree)]
+                + [
+                    transforms.RandomChoice(
+                        [
+                            partial(transforms.functional.rotate, angle=0),
+                            partial(transforms.functional.rotate, angle=90),
+                            partial(transforms.functional.rotate, angle=180),
+                            partial(transforms.functional.rotate, angle=270),
+                        ]
+                    )
+                ]
                 + to_tensor
             )
         elif args.aug_type == "basic_plus_elastic":
-            if random.random() < 0.5:
-                alpha = 150 * random.random() + 50.0
-                augmentation = (
-                    basic_augmentation
-                    + [transforms.ElasticTransform(alpha=alpha)]
-                    + to_tensor
-                )
-            else:
-                augmentation = basic_augmentation + to_tensor
+            augmentation = (
+                basic_augmentation
+                + [transforms.ElasticTransform(alpha=[0.0, 120.0])]
+                + to_tensor
+            )
         else:
             raise Exception(f"Unimplemented aug_type {args.aug_type}")
 

@@ -11,15 +11,16 @@ from functools import partial
 """
 VISUALIZE AUGMENTATION
 """
-
 basic_augmentation = [
     transforms.RandomResizedCrop(224, scale=(0.3, 0.95), ratio=(0.2, 5)),
-    transforms.RandomApply(
-        [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
-    ),
+    transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
     transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5),
-    transforms.ElasticTransform(alpha=200.0),
 ]
+
+
+augmentation = basic_augmentation + [transforms.ElasticTransform(alpha=[0.0, 120.0])]
+
+
 num_views = 4
 sample_backdoored_imgs = [
     "/Users/haitianh/Downloads/Code/ssl_backdoor/dataset/SSL-Backdoor/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True/n02106550/n02106550_11441.jpg",
@@ -35,7 +36,7 @@ sample_backdoored_imgs = [
     "/Users/haitianh/Downloads/Code/ssl_backdoor/dataset/SSL-Backdoor/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True/n02106550/n02106550_8618.jpg",
 ]
 
-transform = NCropsTransform(transforms.Compose(basic_augmentation), num_views)
+transform = NCropsTransform(transforms.Compose(augmentation), num_views)
 
 for img_path in sample_backdoored_imgs:
     img = Image.open(img_path).convert("RGB")
