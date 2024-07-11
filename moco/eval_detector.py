@@ -130,6 +130,16 @@ parser.add_argument(
     default="raw",
     help="which similarity function to use",
 )
+parser.add_argument(
+    "--rrc_scale_min",
+    type=float,
+    default=0.3,
+)
+parser.add_argument(
+    "--rrc_scale_max",
+    type=float,
+    default=0.95,
+)
 
 
 def load_weights(model, wts_path):
@@ -224,7 +234,9 @@ def main(args):
     ]
 
     basic_augmentation = [
-        transforms.RandomResizedCrop(224, scale=(0.3, 0.95), ratio=(0.2, 5)),
+        transforms.RandomResizedCrop(
+            224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+        ),
         transforms.RandomApply(
             [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
         ),
