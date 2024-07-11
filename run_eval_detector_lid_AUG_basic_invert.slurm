@@ -43,8 +43,8 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task variance \
-    --aug_type basic_plus_perspective \
+    --interview_task lid \
+    --aug_type basic_plus_invert \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s

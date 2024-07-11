@@ -8,6 +8,7 @@ import random
 from functools import partial
 
 
+exit()
 """
 VISUALIZE AUGMENTATION
 """
