@@ -94,19 +94,6 @@ parser.add_argument(
 parser.add_argument(
     "--aug_type",
     type=str,
-    choices=[
-        "no",
-        "mocov2",
-        "basic",
-        "basic_plus_grayscale",
-        "basic_plus_invert",
-        "basic_plus_posterize",
-        "basic_plus_solarize",
-        "basic_plus_perspective",
-        "basic_plus_rotation_flexible",
-        "basic_plus_rotation_rigid",
-        "basic_plus_elastic",
-    ],  # TODO: update here
     default="no",
     help="choose which type of augmentation to use, paried with num_views",
 )
