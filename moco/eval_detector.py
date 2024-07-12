@@ -237,9 +237,7 @@ def main(args):
         transforms.RandomResizedCrop(
             224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
         ),
-        transforms.RandomApply(
-            [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8  # not strengthened
-        ),
+        transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
         transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
     ]
 
@@ -305,6 +303,25 @@ def main(args):
             augmentation = (
                 basic_augmentation
                 + [transforms.ElasticTransform(alpha=[0.0, 120.0])]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_posterize_plus_perspective":
+            augmentation = (
+                basic_augmentation
+                + [
+                    transforms.RandomPosterize(bits=4, p=0.5),
+                    transforms.RandomPerspective(p=0.5),
+                ]
+                + to_tensor
+            )
+        elif args.aug_type == "basic_plus_posterize_plus_invert_plus_perspective":
+            augmentation = (
+                basic_augmentation
+                + [
+                    transforms.RandomPosterize(bits=4, p=0.5),
+                    transforms.RandomInvert(p=0.5),
+                    transforms.RandomPerspective(p=0.5),
+                ]
                 + to_tensor
             )
         else:

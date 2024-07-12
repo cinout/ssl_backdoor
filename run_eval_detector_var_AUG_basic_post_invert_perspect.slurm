@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-06:00:00
+#SBATCH --time=0-08:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -44,9 +44,9 @@ python eval_detector.py \
     --num_views 16 \
     --detector InterViews \
     --interview_task variance \
-    --aug_type basic \
-    --rrc_scale_min 0.6 \
-    --rrc_scale_max 1.0 \
+    --aug_type basic_plus_posterize_plus_invert_plus_perspective \
+    # --rrc_scale_min 0.6 \
+    # --rrc_scale_max 1.0 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
