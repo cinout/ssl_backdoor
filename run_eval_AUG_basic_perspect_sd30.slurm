@@ -43,8 +43,9 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task effective_rank \
+    --interview_task spectral_signature \
     --aug_type basic_plus_perspective \
+    --seed 30 \
     
 
 ##Log this job's resource usage stats###
