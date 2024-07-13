@@ -45,6 +45,7 @@ python eval_detector.py \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type basic_plus_rotation_rigid \
+    --use_centered_cov \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s

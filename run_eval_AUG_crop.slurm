@@ -45,8 +45,7 @@ python eval_detector.py \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type crop \
-    # --rrc_scale_min 0.6 \
-    # --rrc_scale_max 1.0 \
+    --use_centered_cov \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
