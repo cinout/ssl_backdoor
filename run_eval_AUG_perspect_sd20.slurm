@@ -44,7 +44,9 @@ python eval_detector.py \
     --num_views 16 \
     --detector InterViews \
     --interview_task spectral_signature \
-    --aug_type basic_plus_invert \
+    --aug_type perspective \
+    --seed 20 \
+    
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
