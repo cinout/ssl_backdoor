@@ -347,6 +347,7 @@ def main(args):
             ] + to_tensor
         elif args.aug_type == "perspective":
             augmentation = [
+                transforms.Resize((224, 224)),
                 transforms.RandomPerspective(p=0.5),
             ] + to_tensor
         else:
