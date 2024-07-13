@@ -44,7 +44,7 @@ python eval_detector.py \
     --num_views 16 \
     --detector InterViews \
     --interview_task variance \
-    --aug_type basic_plus_posterize_plus_invert_plus_perspective \
+    --aug_type crop_plus_jitter \
     # --rrc_scale_min 0.6 \
     # --rrc_scale_max 1.0 \
 

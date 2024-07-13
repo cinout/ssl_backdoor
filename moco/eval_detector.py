@@ -311,6 +311,28 @@ def main(args):
                 ]
                 + to_tensor
             )
+        elif args.aug_type == "crop":
+            augmentation = [
+                transforms.RandomResizedCrop(
+                    224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+                ),
+            ] + to_tensor
+        elif args.aug_type == "crop_plus_jitter":
+            augmentation = [
+                transforms.RandomResizedCrop(
+                    224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+                ),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                ),
+            ] + to_tensor
+        elif args.aug_type == "crop_plus_blur":
+            augmentation = [
+                transforms.RandomResizedCrop(
+                    224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+                ),
+                transforms.RandomApply([moco.loader.GaussianBlur([0.1, 2.0])], p=0.5),
+            ] + to_tensor
         else:
             raise Exception(f"Unimplemented aug_type {args.aug_type}")
 
