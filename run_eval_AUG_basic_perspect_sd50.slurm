@@ -44,7 +44,7 @@ python eval_detector.py \
     --num_views 16 \
     --detector InterViews \
     --interview_task spectral_signature \
-    --aug_type basic_plus_perspective \
+    --aug_type crop_plus_perspective \
     --seed 50 \
     
 

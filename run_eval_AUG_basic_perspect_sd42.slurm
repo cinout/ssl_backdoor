@@ -45,7 +45,7 @@ python eval_detector.py \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type crop_plus_perspective \
-    --seed 40 \
+    --seed 42 \
     
 
 ##Log this job's resource usage stats###
