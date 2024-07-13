@@ -127,6 +127,11 @@ parser.add_argument(
     type=float,
     default=0.95,
 )
+parser.add_argument(
+    "--use_centered_cov",
+    action="store_true",
+    help="for spectral_signature",
+)
 
 
 def load_weights(model, wts_path):

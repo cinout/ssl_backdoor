@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-16:00:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -43,7 +43,7 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task lid \
+    --interview_task spectral_signature \
     --aug_type basic_plus_posterize \
 
 ##Log this job's resource usage stats###

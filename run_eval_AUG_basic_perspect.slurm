@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --partition=gpu-a100
+###SBATCH --partition=gpu-a100
 
 ###SBATCH --partition=gpu-a100-short
 
-###SBATCH --partition=feit-gpu-a100
-###SBATCH --qos=feit
+#SBATCH --partition=feit-gpu-a100
+#SBATCH --qos=feit
 
 ###SBATCH --partition=deeplearn
 ###SBATCH --qos=gpgpudeeplearn
@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-16:00:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -43,8 +43,8 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task lid \
-    --aug_type basic_plus_grayscale \
+    --interview_task spectral_signature \
+    --aug_type basic_plus_perspective \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s

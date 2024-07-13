@@ -1,6 +1,7 @@
 # import misc
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_necessary"):
@@ -14,6 +15,22 @@ def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_neces
     a, idx = torch.sort(r, dim=1)
     lids = -k / torch.sum(torch.log(a[:, 1:k] / a[:, k].view(-1, 1) + 1.0e-4), dim=1)
     return lids
+
+
+def get_ss_score(full_cov, use_centered_cov=False):
+    """
+    https://github.com/MadryLab/backdoor_data_poisoning/blob/master/compute_corr.py
+    """
+    full_mean = np.mean(full_cov, axis=0, keepdims=True)
+    centered_cov = full_cov - full_mean
+    u, s, v = np.linalg.svd(centered_cov, full_matrices=False)
+    eigs = v[0:1]
+    if use_centered_cov:
+        corrs = np.matmul(eigs, np.transpose(centered_cov))
+    else:
+        corrs = np.matmul(eigs, np.transpose(full_cov))
+    scores = np.linalg.norm(corrs, axis=0)  # 2-norm by default
+    return scores
 
 
 class InterViews(nn.Module):
@@ -45,6 +62,7 @@ class InterViews(nn.Module):
             else:
                 raise Exception(f"unimplemented similarity_type {args.similarity_type}")
 
+            # get upper right triangle (off-diagonal) of the matrix
             off_diag_indices = torch.triu_indices(
                 row=args.num_views, col=args.num_views, offset=1
             )
@@ -71,7 +89,13 @@ class InterViews(nn.Module):
         elif args.interview_task == "entropy":
             pass
         elif args.interview_task == "spectral_signature":
-            pass
+            ss_scores = get_ss_score(
+                vision_features.detach().cpu().numpy(),
+                use_centered_cov=args.use_centered_cov,
+            )
+            ss_scores = ss_scores.reshape(args.num_views, -1)  # [n_views, bs]
+            ss_scores = torch.mean(torch.tensor(ss_scores), dim=0)  # [bs]
+            return ss_scores
         elif args.interview_task == "effective_rank":
             pass
         else:
