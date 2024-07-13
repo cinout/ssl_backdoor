@@ -43,9 +43,9 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task spectral_signature \
+    --interview_task effective_rank \
     --aug_type basic_plus_posterize \
-    --use_centered_cov \
+    
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s

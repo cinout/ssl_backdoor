@@ -6,7 +6,6 @@ python eval_detector.py \
     --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     --aug_type basic \
     --num_views 16 \
-    --batch_size 16 \
+    --batch_size 8 \
     --detector InterViews \
-    --interview_task spectral_signature \
-    --use_centered_cov \
+    --interview_task effective_rank \

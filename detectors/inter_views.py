@@ -33,6 +33,16 @@ def get_ss_score(full_cov, use_centered_cov=False):
     return scores
 
 
+def effective_rank(z):
+    z = np.transpose(z)
+    c = np.cov(z)  # convariance matrix
+    u, s, vh = np.linalg.svd(c)
+    p = s / np.abs(s).sum()
+    h = -np.sum(p * np.log(p))
+    er = np.exp(h)
+    return er
+
+
 class InterViews(nn.Module):
     def __init__(self):
         super().__init__()
@@ -97,7 +107,24 @@ class InterViews(nn.Module):
             ss_scores = torch.mean(torch.tensor(ss_scores), dim=0)  # [bs]
             return ss_scores
         elif args.interview_task == "effective_rank":
-            pass
+            vision_features = vision_features.reshape(
+                args.num_views, -1, c
+            )  # [n_views, bs, 512]
+            vision_features = torch.permute(
+                vision_features, (1, 0, 2)
+            )  # [bs, n_views, 512]
+            bs = vision_features.shape[0]
+
+            erank_of_batch = []
+            for i in range(bs):
+                features_of_n_views = vision_features[i]  # [n_views, 512]
+                eff_rank = effective_rank(
+                    features_of_n_views.detach().cpu().numpy(),
+                )  # score
+                erank_of_batch.append(torch.tensor(eff_rank))
+
+            erank_of_batch = torch.stack(erank_of_batch)
+            return -erank_of_batch
         else:
             raise Exception(
                 f"this interview_task {args.interview_task} is unimplemented yet."
