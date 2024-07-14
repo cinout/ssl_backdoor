@@ -350,6 +350,10 @@ def main(args):
                 transforms.Resize((224, 224)),
                 transforms.RandomPerspective(p=0.5),
             ] + to_tensor
+        elif args.aug_type == "resize":
+            augmentation = [
+                transforms.Resize((224, 224)),
+            ] + to_tensor
         else:
             raise Exception(f"Unimplemented aug_type {args.aug_type}")
 
