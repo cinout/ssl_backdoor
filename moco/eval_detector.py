@@ -241,7 +241,7 @@ def main(args):
     if args.aug_type == "no":
         train_dataset = FileListDataset(args.train_file, train_transform)
     else:
-        # TODO: additional augmentation options (add one by one): https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
+        # augmentation options: https://pytorch.org/vision/main/auto_examples/transforms/plot_transforms_illustrations.html
         if args.aug_type == "mocov2":
             augmentation = mocov2_augmentation
         elif args.aug_type == "basic":

@@ -43,8 +43,10 @@ python eval_detector.py \
     --batch_size 64 \
     --num_views 16 \
     --detector InterViews \
-    --interview_task effective_rank \
+    --interview_task variance \
     --aug_type crop \
+    --rrc_scale_min 0.2 \
+    --rrc_scale_max 0.5 \
     
 
 ##Log this job's resource usage stats###

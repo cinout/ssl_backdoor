@@ -8,4 +8,4 @@ python eval_detector.py \
     --num_views 16 \
     --batch_size 8 \
     --detector InterViews \
-    --interview_task effective_rank \
+    --interview_task variance \
