@@ -1,6 +1,7 @@
 import os
 from torch.utils import data
 from PIL import Image
+import torchvision.transforms as transforms
 
 
 class FileListDataset(data.Dataset):
@@ -10,6 +11,7 @@ class FileListDataset(data.Dataset):
             self.file_list = [row.rstrip() for row in self.file_list]
 
         self.transform = transform
+        # self.debug_print_views = debug_print_views
 
     def __getitem__(self, idx):
         image_path = self.file_list[idx].split()[0]
@@ -17,9 +19,15 @@ class FileListDataset(data.Dataset):
         target = int(self.file_list[idx].split()[1])
 
         if self.transform is not None:
-            images = self.transform(img)
 
-        return image_path, images, target, idx
+            # if self.debug_print_views:
+            #     # return both PIL and final tensor
+            #     raw_pils = self.transform(img)
+            #     images = [to_tensor(raw) for raw in raw_pils]
+            #     return image_path, (raw_pils, images), target, idx
+            # else:
+            images = self.transform(img)
+            return image_path, images, target, idx
 
     def __len__(self):
         return len(self.file_list)

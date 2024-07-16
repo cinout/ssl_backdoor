@@ -28,7 +28,11 @@ class CognitiveDistillation(nn.Module):
         mask = (torch.tanh(mask) + 1) / 2
         return mask
 
-    def forward(self, model, images, args):
+    def forward(
+        self,
+        model,
+        images,
+    ):
         model.eval()
         b, c, h, w = images.shape
         mask = torch.ones(b, self.mask_channel, h, w).to(images.device)

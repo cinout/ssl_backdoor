@@ -4,16 +4,18 @@ import torch.nn as nn
 
 
 class NeighborVariation(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super().__init__()
+        self.aug_type = args.aug_type
+        self.num_views = args.num_views
 
     # def forward(self, model, images, args, gt):
-    def forward(self, model, images, args):
+    def forward(self, model, images):
         vision_features, neighbors = model(images)
 
         # #  remove later
         # total_bs = neighbors.shape[0]
-        # actual_bs = total_bs / args.num_views
+        # actual_bs = total_bs / self.num_views
 
         # nn_from_same_image = torch.zeros(
         #     size=(neighbors.shape[0], neighbors.shape[0]), dtype=torch.bool
@@ -34,8 +36,8 @@ class NeighborVariation(nn.Module):
 
         x = -1 * x  # [bs*num_views], each one is anomaly score
 
-        if args.aug_type != "no":
-            x = x.reshape(args.num_views, -1)  # [n_views, bs]
+        if self.aug_type != "no":
+            x = x.reshape(self.num_views, -1)  # [n_views, bs]
             x = torch.mean(x, dim=0)  # [bs]
 
         return x

@@ -132,6 +132,11 @@ parser.add_argument(
     action="store_true",
     help="for spectral_signature",
 )
+parser.add_argument(
+    "--debug_print_views",
+    action="store_true",
+    help="debug mode, print views PIL images",
+)
 
 
 def load_weights(model, wts_path):
@@ -317,9 +322,12 @@ def main(args):
                 + to_tensor
             )
         elif args.aug_type == "crop":
+
             augmentation = [
                 transforms.RandomResizedCrop(
-                    224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+                    224,
+                    scale=(args.rrc_scale_min, args.rrc_scale_max),
+                    ratio=(0.2, 5),
                 ),
             ] + to_tensor
         elif args.aug_type == "crop_plus_jitter":
@@ -383,9 +391,9 @@ def main(args):
             k=args.k, gather_distributed=False, compute_mode=compute_mode
         )
     elif args.detector == "NeighborVariation":
-        detector = NeighborVariation()
+        detector = NeighborVariation(args)
     elif args.detector == "InterViews":
-        detector = InterViews()
+        detector = InterViews(args)
     else:
         raise ("Unknown Detector")
 
@@ -402,7 +410,7 @@ def main(args):
             images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
 
         images = images.to(device)
-        preds = detector(backbone, images, args)  # [bs], each one is anomaly score
+        preds = detector(backbone, images)  # [bs], each one is anomaly score
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())

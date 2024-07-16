@@ -2,6 +2,16 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torchvision.transforms as transforms
+
+invTrans = transforms.Compose(
+    [
+        transforms.Normalize(
+            mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+        ),
+        transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
+    ]
+)
 
 
 def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_necessary"):
@@ -44,37 +54,50 @@ def effective_rank(z):
 
 
 class InterViews(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super().__init__()
+        self.debug_print_views = args.debug_print_views
+        self.interview_task = args.interview_task
+        self.num_views = args.num_views
+        self.similarity_type = args.similarity_type
+        self.use_centered_cov = args.use_centered_cov
 
-    def forward(self, model, images, args):
+    def forward(self, model, images):
+        if self.debug_print_views:
+            # TODO: remove [0] and save all
+            unnormalized_images = invTrans(images)
+
+            PIL_image = transforms.functional.to_pil_image(unnormalized_images[10])
+            PIL_image.save(f"test_random.jpg", "JPEG")
+            exit()
+
         vision_features = model(images)  # [bs*n_views, 512]
         _, c = vision_features.shape
 
-        if args.interview_task == "variance":
+        if self.interview_task == "variance":
             vision_features = vision_features.reshape(
-                args.num_views, -1, c
+                self.num_views, -1, c
             )  # [n_views, bs, 512]
             vision_features = torch.permute(
                 vision_features, (1, 0, 2)
             )  # [bs, n_views, 512]
             bs = vision_features.shape[0]
 
-            if args.similarity_type == "cosine":
+            if self.similarity_type == "cosine":
                 vision_features = (
                     vision_features / vision_features.norm(dim=2)[:, :, None]
                 )
                 similarity_matrix = vision_features @ vision_features.transpose(
                     1, 2
                 )  # [bs, n_view, n_view], diagonals are 1.00
-            elif args.similarity_type == "raw":
+            elif self.similarity_type == "raw":
                 similarity_matrix = vision_features @ vision_features.transpose(1, 2)
             else:
-                raise Exception(f"unimplemented similarity_type {args.similarity_type}")
+                raise Exception(f"unimplemented similarity_type {self.similarity_type}")
 
             # get upper right triangle (off-diagonal) of the matrix
             off_diag_indices = torch.triu_indices(
-                row=args.num_views, col=args.num_views, offset=1
+                row=self.num_views, col=self.num_views, offset=1
             )
             off_diag_indices = off_diag_indices.T
 
@@ -91,24 +114,24 @@ class InterViews(nn.Module):
 
             var_of_batch = torch.stack(var_of_batch)
             return -1 * var_of_batch
-        elif args.interview_task == "lid":
+        elif self.interview_task == "lid":
             lids = lid_mle(data=vision_features, reference=vision_features)
-            lids = lids.reshape(args.num_views, -1)  # [n_views, bs]
+            lids = lids.reshape(self.num_views, -1)  # [n_views, bs]
             lids = torch.mean(lids, dim=0)  # [bs]
             return lids
-        elif args.interview_task == "entropy":
+        elif self.interview_task == "entropy":
             pass
-        elif args.interview_task == "spectral_signature":
+        elif self.interview_task == "spectral_signature":
             ss_scores = get_ss_score(
                 vision_features.detach().cpu().numpy(),
-                use_centered_cov=args.use_centered_cov,
+                use_centered_cov=self.use_centered_cov,
             )
-            ss_scores = ss_scores.reshape(args.num_views, -1)  # [n_views, bs]
+            ss_scores = ss_scores.reshape(self.num_views, -1)  # [n_views, bs]
             ss_scores = torch.mean(torch.tensor(ss_scores), dim=0)  # [bs]
             return ss_scores
-        elif args.interview_task == "effective_rank":
+        elif self.interview_task == "effective_rank":
             vision_features = vision_features.reshape(
-                args.num_views, -1, c
+                self.num_views, -1, c
             )  # [n_views, bs, 512]
             vision_features = torch.permute(
                 vision_features, (1, 0, 2)
@@ -127,5 +150,5 @@ class InterViews(nn.Module):
             return -erank_of_batch
         else:
             raise Exception(
-                f"this interview_task {args.interview_task} is unimplemented yet."
+                f"this interview_task {self.interview_task} is unimplemented yet."
             )
