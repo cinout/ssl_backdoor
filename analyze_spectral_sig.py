@@ -16,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 seeds = [30, 42]
 augs = ["basic_plus_rotation_rigid", "crop_plus_perspective", "perspective"]
 
-num_views = 16
+num_views = 64  # TODO: update
 gt = np.array([1, 0, 0, 0, 0, 0, 0, 0])
 
 for aug in augs:
