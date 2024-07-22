@@ -43,8 +43,10 @@ python eval_detector.py \
     --batch_size 32 \
     --num_views 64 \
     --detector InterViews \
-    --interview_task spectral_signature \
-    --aug_type crop_plus_perspective \
+    --interview_task variance \
+    --aug_type crop \
+    --rrc_scale_min 0.2 \
+    --rrc_scale_max 0.5 \
     --seed 20 \
     
 
