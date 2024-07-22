@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-06:00:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -40,13 +40,12 @@ python eval_detector.py \
     --arch moco_resnet18 \
     --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
-    --batch_size 64 \
-    --num_views 16 \
+    --batch_size 32 \
+    --num_views 64 \
     --detector InterViews \
-    --interview_task variance \
-    --aug_type crop \
-    --rrc_scale_min 0.2 \
-    --rrc_scale_max 0.5 \
+    --interview_task spectral_signature \
+    --aug_type crop_plus_perspective \
+    --seed 20 \
     
 
 ##Log this job's resource usage stats###

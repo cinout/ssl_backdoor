@@ -16,6 +16,8 @@ eggs/
 .eggs/
 *.png
 *.jpg
+*.pdf
+*.npy
 lib/
 lib64/
 parts/

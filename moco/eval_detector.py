@@ -375,7 +375,11 @@ def main(args):
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        shuffle=True,  # make sure it is True, as we need to study randomness's impact on detector's performance
+        shuffle=(
+            False
+            if args.debug_print_views and args.interview_task == "spectral_signature"
+            else True
+        ),  # make sure it is True, as we need to study randomness's impact on detector's performance
         num_workers=args.workers,
         pin_memory=True,
         drop_last=False,
@@ -410,7 +414,10 @@ def main(args):
             images = torch.cat(images, dim=0)  # interleaved [1, 2, ..., bs, 1, 2, ...]
 
         images = images.to(device)
-        preds = detector(backbone, images)  # [bs], each one is anomaly score
+        if args.debug_print_views:
+            preds = detector(backbone, images, gt)  # [bs], each one is anomaly score
+        else:
+            preds = detector(backbone, images)  # [bs], each one is anomaly score
 
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())

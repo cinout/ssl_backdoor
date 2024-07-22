@@ -7,7 +7,19 @@ from moco.moco.loader import GaussianBlur
 import random
 from functools import partial
 import torch.nn.functional as F
+import math
 
+
+arr = np.array([[10.8, -2.8, 0.5]])
+arr_0 = np.linalg.norm(arr, axis=0)
+arr_1 = np.linalg.norm(arr, axis=1)
+print(arr_0)
+print(arr_1)
+
+res = math.sqrt(10.8**2 + 2.8**2 + 0.5**2)
+print(res)
+
+exit()
 """
 VISUALIZE AUGMENTATION
 """
