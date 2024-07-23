@@ -10,14 +10,15 @@ import torch.nn.functional as F
 import math
 
 
-arr = np.array([[10.8, -2.8, 0.5]])
-arr_0 = np.linalg.norm(arr, axis=0)
-arr_1 = np.linalg.norm(arr, axis=1)
-print(arr_0)
-print(arr_1)
+li1 = np.array([10, 15, 20, 25, 30, 35, 40], dtype=np.float32)
 
-res = math.sqrt(10.8**2 + 2.8**2 + 0.5**2)
-print(res)
+
+li1 = torch.from_numpy(li1)
+
+threshold = torch.quantile(li1, q=0.9)
+print(f"threshold is {threshold}")
+li1 = li1[li1 <= threshold]
+print(f"li1 is {li1}")
 
 exit()
 """

@@ -48,6 +48,7 @@ python eval_detector.py \
     --rrc_scale_min 0.2 \
     --rrc_scale_max 0.5 \
     --seed 20 \
+    --top_quantile 0.85 \
     
 
 ##Log this job's resource usage stats###

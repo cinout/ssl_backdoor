@@ -68,6 +68,7 @@ class InterViews(nn.Module):
         self.use_centered_cov = args.use_centered_cov
         self.seed = args.seed
         self.aug_type = args.aug_type
+        self.top_quantile = args.top_quantile
 
     def forward(self, model, images, gt=None):
         if self.debug_print_views:
@@ -82,6 +83,11 @@ class InterViews(nn.Module):
             # see which one is poisoned image
             print(gt)
 
+            poison_image_index = gt.index(1)
+            poison_views_indices = [
+                view_i * bs + poison_image_index for view_i in range(self.num_views)
+            ]
+
             unnormalized_images = invTrans(images)
             for i in range(unnormalized_images.shape[0]):
                 PIL_image = transforms.functional.to_pil_image(unnormalized_images[i])
@@ -94,39 +100,95 @@ class InterViews(nn.Module):
                 8,
                 16,
                 24,
+                32,
                 40,
                 48,
                 56,
                 64,
                 72,
+                80,
                 88,
                 96,
                 104,
                 112,
                 120,
+                128,
+                136,
+                144,
+                152,
+                160,
+                168,
+                176,
+                184,
+                192,
+                200,
+                208,
+                216,
+                224,
+                232,
+                240,
+                248,
+                256,
+                264,
+                272,
+                280,
+                288,
+                296,
+                304,
+                312,
+                320,
+                328,
+                336,
+                344,
+                352,
+                360,
+                368,
+                376,
+                384,
+                392,
+                400,
+                408,
+                416,
+                424,
+                432,
+                440,
+                448,
+                456,
+                464,
+                472,
+                480,
+                488,
+                496,
+                504,
             ]  # record the GLOBAL indices of views, full or near-full
             partial_trigger_in_view = (
                 []
             )  # as long as part of it is in, even if a very small portion
-            no_trigger_in_view = [
-                32,
-                80,
-            ]  # definitely not a single trace of trigger in the view
+            no_trigger_in_view = (
+                []
+            )  # definitely not a single trace of trigger in the view
+
+            all_views = (
+                full_trigger_in_view + partial_trigger_in_view + no_trigger_in_view
+            )
+
+            additional_indices = np.setdiff1d(
+                np.array(all_views), np.array(poison_views_indices)
+            )
+            missing_indices = np.setdiff1d(
+                np.array(poison_views_indices), np.array(all_views)
+            )
+
+            if len(additional_indices) > 0:
+                print(f"unwanted additional indices: {additional_indices}")
+            if len(missing_indices) > 0:
+                print(f"missing indices: {missing_indices}")
 
             assert (
-                len(full_trigger_in_view)
-                + len(partial_trigger_in_view)
-                + len(no_trigger_in_view)
-                == self.num_views
-            ), "you missed some views"
+                len(all_views) == self.num_views
+            ), "the total amount of views is not right"
 
-            for item in (
-                full_trigger_in_view + partial_trigger_in_view + no_trigger_in_view
-            ):
-                if item % bs != gt.index(1):
-                    raise Exception(f"{item} is not the right index")
-
-            # TODO: comment out
+            # TODO: toggle
             # exit()
 
             export_results["full_trigger_global_indices"] = full_trigger_in_view
@@ -293,17 +355,26 @@ class InterViews(nn.Module):
 
             var_of_batch = []
             for i in range(bs):
+                # for each image
                 sim_matrix_single = similarity_matrix[i]  # [n_views, n_views]
-                all_values = []
+                all_values = []  # all the similarities between views
                 for index in off_diag_indices:
                     row, col = index
                     all_values.append(sim_matrix_single[row, col])
                 all_values = torch.stack(all_values)
+
+                if self.top_quantile < 1.0:
+                    # remove extreme values
+                    top_similarity_threshold = torch.quantile(
+                        all_values, q=self.top_quantile
+                    )
+                    all_values = all_values[all_values < top_similarity_threshold]
+
                 var = torch.var(all_values)
                 var_of_batch.append(var)
 
             var_of_batch = torch.stack(var_of_batch)
-            return -1 * var_of_batch
+            return var_of_batch
         elif self.interview_task == "lid":
             lids = lid_mle(data=vision_features, reference=vision_features)
             lids = lids.reshape(self.num_views, -1)  # [n_views, bs]

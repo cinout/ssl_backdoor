@@ -47,7 +47,8 @@ python eval_detector.py \
     --aug_type crop \
     --rrc_scale_min 0.2 \
     --rrc_scale_max 0.5 \
-    --seed 40 \
+    --seed 20 \
+    --top_quantile 0.99 \
     
 
 ##Log this job's resource usage stats###

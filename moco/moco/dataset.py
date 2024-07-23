@@ -11,7 +11,6 @@ class FileListDataset(data.Dataset):
             self.file_list = [row.rstrip() for row in self.file_list]
 
         self.transform = transform
-        # self.debug_print_views = debug_print_views
 
     def __getitem__(self, idx):
         image_path = self.file_list[idx].split()[0]
@@ -20,12 +19,6 @@ class FileListDataset(data.Dataset):
 
         if self.transform is not None:
 
-            # if self.debug_print_views:
-            #     # return both PIL and final tensor
-            #     raw_pils = self.transform(img)
-            #     images = [to_tensor(raw) for raw in raw_pils]
-            #     return image_path, (raw_pils, images), target, idx
-            # else:
             images = self.transform(img)
             return image_path, images, target, idx
 

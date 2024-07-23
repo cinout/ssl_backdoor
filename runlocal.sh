@@ -9,7 +9,7 @@ python eval_detector.py \
     --detector InterViews \
     --interview_task spectral_signature \
     --debug_print_views \
-    --aug_type crop_plus_perspective \
+    --aug_type perspective \
     --seed 42 \
 
     # --seed 30 \

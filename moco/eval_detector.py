@@ -110,6 +110,7 @@ parser.add_argument(
     default=4,
     help="how many views are generated for each image, for NeighborVariation detector",
 )
+# for "variance" task
 parser.add_argument(
     "--similarity_type",
     type=str,
@@ -128,10 +129,20 @@ parser.add_argument(
     default=0.95,
 )
 parser.add_argument(
+    "--top_quantile",
+    type=float,
+    default=1.0,
+    help="percentage of similarities to be used",
+)
+
+# for spectral signature
+parser.add_argument(
     "--use_centered_cov",
     action="store_true",
     help="for spectral_signature",
 )
+
+# for debugging and analysis
 parser.add_argument(
     "--debug_print_views",
     action="store_true",
