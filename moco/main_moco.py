@@ -88,7 +88,7 @@ parser.add_argument(
 parser.add_argument(
     "-j",
     "--workers",
-    default=32,
+    default=4,
     type=int,
     metavar="N",
     help="number of data loading workers (default: 32)",
@@ -214,12 +214,7 @@ parser.add_argument("--experiment-id", type=str, default="", help="experiment id
 parser.add_argument("--save-folder-root", type=str, default="", help="save folder root")
 
 
-def main():
-    args = parser.parse_args()
-
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
+def main(args):
 
     save_folder_terms = [
         f"mocom{args.moco_m:g}",
@@ -262,64 +257,20 @@ def main():
             f'e{",".join(map(str, args.schedule))},{args.epochs}',
         ]
     )
-
     args.save_folder = os.path.join(
         "{}/{}".format(args.save_folder_root, args.experiment_id),
         "_".join(save_folder_terms),
     )
-    # TODO: make sure no dups due to DDP
-    os.makedirs(args.save_folder, exist_ok=True)
+
+    if dist.get_rank() == 0:
+        os.makedirs(args.save_folder, exist_ok=True)
+
     print(f"save_folder: '{args.save_folder}'")
-
-    if "WORLD_SIZE" in os.environ:
-        args.world_size = int(os.environ["WORLD_SIZE"])
-
-    args.distributed = args.world_size > 1
-    ngpus_per_node = torch.cuda.device_count()
-    torch.backends.cudnn.benchmark = True
-
-    if args.distributed:
-        if args.local_rank != -1:  # for torch.distributed.launch
-            args.global_rank = args.local_rank
-            args.gpu = args.local_rank
-        elif "SLURM_PROCID" in os.environ:  # for slurm scheduler
-            args.global_rank = int(os.environ["SLURM_PROCID"])
-            args.gpu = args.global_rank % ngpus_per_node
-        dist.init_process_group(
-            backend=args.dist_backend,
-            init_method=args.dist_url,
-            world_size=args.world_size,
-            rank=args.global_rank,
-        )
-        if args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-
-        # suppress printing if not on master gpu
-        if args.global_rank != 0:
-
-            def print_pass(*args):
-                pass
-
-            builtins.print = print_pass
-
-    devices_names = (
-        f"{[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]}"
-    )
-    print(f"using devices: {devices_names}")
 
     main_worker(args)
 
 
 def main_worker(args):
-
-    if args.seed is not None:
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-        np.random.seed(args.seed)
-        random.seed(args.seed)
-
-    cudnn.deterministic = True
-    cudnn.benchmark = False
 
     # create model
     print("=> creating model '{}'".format(args.arch))
@@ -404,8 +355,6 @@ def main_worker(args):
 
         adjust_learning_rate(optimizer, epoch, args)
 
-        # train for one epoch
-        # TODO: clean
         train(train_loader, model, optimizer, epoch, args)
 
         if dist.get_rank() == 0:
@@ -636,8 +585,54 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        np.random.seed(args.seed)
+        random.seed(args.seed)
+
+    cudnn.deterministic = True
+    cudnn.benchmark = False
+
+    if "WORLD_SIZE" in os.environ:
+        args.world_size = int(os.environ["WORLD_SIZE"])
+
+    args.distributed = args.world_size > 1
+    ngpus_per_node = torch.cuda.device_count()
+    torch.backends.cudnn.benchmark = True
+
+    if args.distributed:
+        if args.local_rank != -1:  # for torch.distributed.launch
+            args.global_rank = args.local_rank
+            args.gpu = args.local_rank
+        elif "SLURM_PROCID" in os.environ:  # for slurm scheduler
+            args.global_rank = int(os.environ["SLURM_PROCID"])
+            args.gpu = args.global_rank % ngpus_per_node
+        dist.init_process_group(
+            backend=args.dist_backend,
+            init_method=args.dist_url,
+            world_size=args.world_size,
+            rank=args.global_rank,
+        )
+        if args.gpu is not None:
+            torch.cuda.set_device(args.gpu)
+
+        # suppress printing if not on master gpu
+        if args.global_rank != 0:
+
+            def print_pass(*args):
+                pass
+
+            builtins.print = print_pass
+
+    devices_names = (
+        f"{[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]}"
+    )
+    print(f"using devices: {devices_names}")
     t = time.localtime()
     print("Experiment start time: {} ".format(time.asctime(t)))
-    main()
+    main(args)
     t = time.localtime()
     print("Experiment end time: {} ".format(time.asctime(t)))
