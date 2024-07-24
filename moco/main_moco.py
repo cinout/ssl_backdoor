@@ -360,19 +360,19 @@ def main_worker(args):
         train(train_loader, model, optimizer, epoch, args)
 
         # TODO: uncomment me later
-        # if dist.get_rank() == 0:
-        #     save_filename = os.path.join(
-        #         args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
-        #     )
-        #     save_checkpoint(
-        #         {
-        #             "epoch": epoch + 1,
-        #             "arch": args.arch,
-        #             "state_dict": model.state_dict(),
-        #             "optimizer": optimizer.state_dict(),
-        #         },
-        #         filename=save_filename,
-        #     )
+        if dist.get_rank() == 0:
+            save_filename = os.path.join(
+                args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
+            )
+            save_checkpoint(
+                {
+                    "epoch": epoch + 1,
+                    "arch": args.arch,
+                    "state_dict": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                },
+                filename=save_filename,
+            )
 
 
 def create_data_loader(args):
@@ -512,7 +512,9 @@ def train(train_loader, model, optimizer, epoch, args):
     # end = time.time()
     # for i, (images, _) in enumerate(train_loader):
 
+    # TODO: remove me
     print(f"=> total length of train_loader: {len(train_loader)}")
+    print(f"train_loader: {train_loader}")
 
     for i, (_, images, target, _) in enumerate(
         train_loader
