@@ -39,6 +39,8 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --lr 0.06 \
     --batch-size 256 \
     --multiprocessing-distributed \
+    --world-size 1 \
+    --rank 0 \
     --aug-plus \
     --mlp \
     --cos \
@@ -51,8 +53,6 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --experiment-id blend_attack \
     --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
     --workers 3 \
-    # --world-size 1 \
-    # --rank 0 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
