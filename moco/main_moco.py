@@ -317,6 +317,10 @@ def main_worker(index, args):
         builtins.print = print_pass
 
     print(f"Use GPU(s): {args.gpus} for training on '{socket.gethostname()}'")
+    devices_names = (
+        f"{[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]}"
+    )
+    print(f"using devices: {devices_names}")
 
     # init distributed training if needed
     if args.distributed:
