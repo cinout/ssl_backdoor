@@ -11,7 +11,7 @@
 
 #SBATCH --job-name="bld_atk"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:50:00
+#SBATCH --time=2-00:00:00
 
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=2
