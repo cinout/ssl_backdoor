@@ -11,7 +11,7 @@
 
 #SBATCH --job-name="bld_atk"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:40:00
+#SBATCH --time=0-00:20:00
 
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=2
@@ -47,9 +47,10 @@ srun python -u main_moco.py \
     --moco-contr-tau 0.2 \
     --save-folder-root haitian \
     --experiment-id blend_attack \
-    --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
+    --data ../poison-generation/data/BLEND/train/debug_dummy.txt \
 
 # --batch-size 256 \
+# TODO: update DDP setting, --data, --batch_size, --time
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
