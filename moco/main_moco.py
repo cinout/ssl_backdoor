@@ -436,6 +436,8 @@ def main_worker(index, args):
     train_loader = create_data_loader(args)
 
     for epoch in range(args.start_epoch, args.epochs):
+        print(f"=> current epoch: {epoch}")
+
         if args.distributed:
             train_loader.sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
