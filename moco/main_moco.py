@@ -359,7 +359,6 @@ def main_worker(args):
 
         train(train_loader, model, optimizer, epoch, args)
 
-        # TODO: uncomment me later
         if dist.get_rank() == 0:
             save_filename = os.path.join(
                 args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
@@ -406,7 +405,6 @@ def create_data_loader(args):
         ]
 
     # data is loaded from filelist created during poisoning
-    # TODO: inspect
     train_dataset = moco.dataset.FileListDataset(
         args.data, moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     )
@@ -512,17 +510,12 @@ def train(train_loader, model, optimizer, epoch, args):
     # end = time.time()
     # for i, (images, _) in enumerate(train_loader):
 
-    # TODO: remove me
-    print(f"=> total length of train_loader: {len(train_loader)}")
-    print(f"train_loader: {train_loader}")
+    total_iter = len(train_loader)
 
     for i, (_, images, target, _) in enumerate(
         train_loader
     ):  # for bs=256, len(train_loader) = 494
         # measure data loading time
-
-        # TODO: remove me
-        print(f">>>> iteration is {i}")
 
         # data_time.update(time.time() - end)
 
@@ -572,11 +565,8 @@ def train(train_loader, model, optimizer, epoch, args):
         # batch_time.update(time.time() - end)
         # end = time.time()
 
-        # if i % args.print_freq == 0 and dist.get_rank() == 0:
-        #     progress.display(i)
-
-        # TODO: remove me
-        print(f">>>> end iteration {i} with loss {total_loss.item()}")
+        if i % args.print_freq == 0 and dist.get_rank() == 0:
+            print(f"iteration: {i}/{total_iter}, loss: {total_loss.item()}")
 
 
 def save_checkpoint(state, filename="checkpoint.pth.tar"):
