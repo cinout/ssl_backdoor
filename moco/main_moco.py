@@ -514,6 +514,8 @@ def train(train_loader, model, optimizer, epoch, args):
     # end = time.time()
     # for i, (images, _) in enumerate(train_loader):
 
+    print(f"=> total length of train_loader: {len(train_loader)}")
+
     for i, (_, images, target, _) in enumerate(
         train_loader
     ):  # for bs=256, len(train_loader) = 494
