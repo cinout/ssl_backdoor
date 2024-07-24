@@ -9,17 +9,14 @@ from functools import partial
 import torch.nn.functional as F
 import math
 
-
+print([0] * 5)
 li1 = np.array([10, 15, 20, 25, 30, 35, 40], dtype=np.float32)
 
 
-li1 = torch.from_numpy(li1)
+li2 = None
 
-threshold = torch.quantile(li1, q=0.9)
-print(f"threshold is {threshold}")
-li1 = li1[li1 <= threshold]
-print(f"li1 is {li1}")
 
+con = np.concatenate([li1, li2], axis=0)
 exit()
 """
 VISUALIZE AUGMENTATION
