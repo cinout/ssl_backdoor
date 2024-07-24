@@ -318,6 +318,8 @@ def main_worker(args):
     else:
         model.cuda(args.gpu)
 
+    model.train()
+
     optimizer = torch.optim.SGD(
         model.parameters(),
         args.lr,
@@ -357,19 +359,20 @@ def main_worker(args):
 
         train(train_loader, model, optimizer, epoch, args)
 
-        if dist.get_rank() == 0:
-            save_filename = os.path.join(
-                args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
-            )
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "arch": args.arch,
-                    "state_dict": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                },
-                filename=save_filename,
-            )
+        # TODO: uncomment me later
+        # if dist.get_rank() == 0:
+        #     save_filename = os.path.join(
+        #         args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
+        #     )
+        #     save_checkpoint(
+        #         {
+        #             "epoch": epoch + 1,
+        #             "arch": args.arch,
+        #             "state_dict": model.state_dict(),
+        #             "optimizer": optimizer.state_dict(),
+        #         },
+        #         filename=save_filename,
+        #     )
 
 
 def create_data_loader(args):
@@ -403,6 +406,7 @@ def create_data_loader(args):
         ]
 
     # data is loaded from filelist created during poisoning
+    # TODO: inspect
     train_dataset = moco.dataset.FileListDataset(
         args.data, moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     )
@@ -429,16 +433,16 @@ def train(train_loader, model, optimizer, epoch, args):
     # batch_time = utils.AverageMeter("Time", "6.3f")
     # data_time = utils.AverageMeter("Data", "6.3f")
 
-    # save images to investigate
-    inv_normalize = transforms.Normalize(
-        mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-        std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
-    )
+    # # save images to investigate
+    # inv_normalize = transforms.Normalize(
+    #     mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+    #     std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
+    # )
 
-    inv_transform = transforms.Compose([inv_normalize, transforms.ToPILImage()])
+    # inv_transform = transforms.Compose([inv_normalize, transforms.ToPILImage()])
 
-    os.makedirs("{}/train_images".format(args.save_folder), exist_ok=True)
-    img_ctr = 0
+    # os.makedirs("{}/train_images".format(args.save_folder), exist_ok=True)
+    # img_ctr = 0
 
     # loss_meters = []
     # loss_updates = []
@@ -449,55 +453,52 @@ def train(train_loader, model, optimizer, epoch, args):
     # )  # lam for closure
     # loss_meters.extend([meter, utils.ProgressMeter.BR])
 
-    if args.moco_contr_w != 0:  # 1 True
-        # meter = utils.AverageMeter("Contr-Loss", ".4e")
-        # acc1 = utils.AverageMeter("Contr-Acc1", "6.2f")
-        # acc5 = utils.AverageMeter("Contr-Acc5", "6.2f")
+    # if args.moco_contr_w != 0:  # 1 True
+    # meter = utils.AverageMeter("Contr-Loss", ".4e")
+    # acc1 = utils.AverageMeter("Contr-Acc1", "6.2f")
+    # acc5 = utils.AverageMeter("Contr-Acc5", "6.2f")
 
-        # def f(meter, macc1, macc5):  # closure
-        #     def accuracy(output, target=0, topk=(1,)):
-        #         """Computes the accuracy over the k top predictions for the specified values of k"""
-        #         with torch.no_grad():
-        #             maxk = max(topk)
-        #             batch_size = output.size(0)
+    # def f(meter, macc1, macc5):  # closure
+    #     def accuracy(output, target=0, topk=(1,)):
+    #         """Computes the accuracy over the k top predictions for the specified values of k"""
+    #         with torch.no_grad():
+    #             maxk = max(topk)
+    #             batch_size = output.size(0)
 
-        #             _, pred = output.topk(maxk, 1, True, True)
-        #             pred = pred.t()
-        #             correct = pred == 0
+    #             _, pred = output.topk(maxk, 1, True, True)
+    #             pred = pred.t()
+    #             correct = pred == 0
 
-        #             res = []
-        #             for k in topk:
-        #                 correct_k = correct[:k].reshape(-1).float().sum()
-        #                 res.append(correct_k.mul_(100.0 / batch_size))
-        #             return res
+    #             res = []
+    #             for k in topk:
+    #                 correct_k = correct[:k].reshape(-1).float().sum()
+    #                 res.append(correct_k.mul_(100.0 / batch_size))
+    #             return res
 
-        #     def update(losses, _, bs):
-        #         meter.update(losses.loss_contr, bs)
-        #         acc1, acc5 = accuracy(losses.logits_contr, topk=(1, 5))
-        #         macc1.update(acc1, bs)
-        #         macc5.update(acc5, bs)
+    #     def update(losses, _, bs):
+    #         meter.update(losses.loss_contr, bs)
+    #         acc1, acc5 = accuracy(losses.logits_contr, topk=(1, 5))
+    #         macc1.update(acc1, bs)
+    #         macc5.update(acc5, bs)
 
-        #     return update
+    #     return update
 
-        # loss_updates.append(f(meter, acc1, acc5))
-        # loss_meters.extend([meter, acc1, acc5, utils.ProgressMeter.BR])
-        pass
+    # loss_updates.append(f(meter, acc1, acc5))
+    # loss_meters.extend([meter, acc1, acc5, utils.ProgressMeter.BR])
 
-    if args.moco_align_w != 0:  # 0 False
-        # meter = utils.AverageMeter("Align-Loss", ".4e")
-        # loss_updates.append(
-        #     (lambda m: lambda losses, _, bs: m.update(losses.loss_align, bs))(meter)
-        # )  # lam for closure
-        # loss_meters.append(meter)
-        pass
+    # if args.moco_align_w != 0:  # 0 False
+    # meter = utils.AverageMeter("Align-Loss", ".4e")
+    # loss_updates.append(
+    #     (lambda m: lambda losses, _, bs: m.update(losses.loss_align, bs))(meter)
+    # )  # lam for closure
+    # loss_meters.append(meter)
 
-    if args.moco_unif_w != 0:  # 0 False
-        # meter = utils.AverageMeter("Unif-Loss", ".4e")
-        # loss_updates.append(
-        #     (lambda m: lambda losses, _, bs: m.update(losses.loss_unif))(meter)
-        # )  # lam for closure
-        # loss_meters.append(meter)
-        pass
+    # if args.moco_unif_w != 0:  # 0 False
+    # meter = utils.AverageMeter("Unif-Loss", ".4e")
+    # loss_updates.append(
+    #     (lambda m: lambda losses, _, bs: m.update(losses.loss_unif))(meter)
+    # )  # lam for closure
+    # loss_meters.append(meter)
 
     # if len(loss_meters) and loss_meters[-1] == utils.ProgressMeter.BR:
     #     loss_meters = loss_meters[:-1]
@@ -507,9 +508,6 @@ def train(train_loader, model, optimizer, epoch, args):
     #     [batch_time, data_time] + loss_meters,
     #     prefix="Epoch: [{}]".format(epoch),
     # )
-
-    # switch to train mode
-    model.train()
 
     # end = time.time()
     # for i, (images, _) in enumerate(train_loader):
