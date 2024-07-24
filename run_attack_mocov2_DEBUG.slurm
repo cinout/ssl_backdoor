@@ -2,26 +2,26 @@
 
 ###SBATCH --partition=gpu-a100
 
-###SBATCH --partition=feit-gpu-a100
-###SBATCH --qos=feit
+#SBATCH --partition=feit-gpu-a100
+#SBATCH --qos=feit
 
-#SBATCH --partition=deeplearn
-#SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+###SBATCH --partition=deeplearn
+###SBATCH --qos=gpgpudeeplearn
+###SBATCH --constraint=dlg4|dlg5
 
 #SBATCH --job-name="bld_atk"
 #SBATCH --account=punim1623
 #SBATCH --time=0-00:40:00
 
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=3
-#SBATCH --gres=gpu:3
+#SBATCH --ntasks-per-node=2
+#SBATCH --gres=gpu:2
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --mem=80G
 
-export WORLD_SIZE=6   ### update world size: nodes x ntasks-per-node
+export WORLD_SIZE=4   ### update world size: nodes x ntasks-per-node
 export MASTER_PORT=28400
 echo ">>> NODELIST="${SLURM_NODELIST}
 master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
