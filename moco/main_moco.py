@@ -550,7 +550,7 @@ def train(train_loader, model, optimizer, epoch, args):
         )
 
         # record loss
-        if args.index == 0:
+        if dist.get_rank() == 0:
             bs = images[0].shape[0]
             for update_fn in loss_updates:
                 update_fn(moco_losses, total_loss, bs)
@@ -564,7 +564,7 @@ def train(train_loader, model, optimizer, epoch, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % args.print_freq == 0 and args.index == 0:
+        if i % args.print_freq == 0 and dist.get_rank() == 0:
             progress.display(i)
 
 
