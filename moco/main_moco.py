@@ -521,25 +521,25 @@ def train(train_loader, model, optimizer, epoch, args):
         images[0] = images[0].cuda(args.gpu, non_blocking=True)
         images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
-        # save images to investigate
-        if epoch == 0 and i < 10:
-            for batch_index in range(images[0].size(0)):
-                if int(target[batch_index].item()) == 26:
-                    img_ctr = img_ctr + 1
-                    inv_image1 = inv_transform(images[0][batch_index].cpu())
-                    inv_image1.save(
-                        "{}/train_images/".format(args.save_folder)
-                        + str(img_ctr).zfill(5)
-                        + "_view_0"
-                        + ".png"
-                    )
-                    inv_image2 = inv_transform(images[1][batch_index].cpu())
-                    inv_image2.save(
-                        "{}/train_images/".format(args.save_folder)
-                        + str(img_ctr).zfill(5)
-                        + "_view_1"
-                        + ".png"
-                    )
+        # # save images to investigate
+        # if epoch == 0 and i < 10:
+        #     for batch_index in range(images[0].size(0)):
+        #         if int(target[batch_index].item()) == 26:
+        #             img_ctr = img_ctr + 1
+        #             inv_image1 = inv_transform(images[0][batch_index].cpu())
+        #             inv_image1.save(
+        #                 "{}/train_images/".format(args.save_folder)
+        #                 + str(img_ctr).zfill(5)
+        #                 + "_view_0"
+        #                 + ".png"
+        #             )
+        #             inv_image2 = inv_transform(images[1][batch_index].cpu())
+        #             inv_image2.save(
+        #                 "{}/train_images/".format(args.save_folder)
+        #                 + str(img_ctr).zfill(5)
+        #                 + "_view_1"
+        #                 + ".png"
+        #             )
 
         # compute losses
         moco_losses = model(im_q=images[0], im_k=images[1])
