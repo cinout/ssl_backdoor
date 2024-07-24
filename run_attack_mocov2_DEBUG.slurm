@@ -14,8 +14,8 @@
 #SBATCH --time=0-00:50:00
 
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=4
-#SBATCH --gres=gpu:4
+#SBATCH --ntasks-per-node=2
+#SBATCH --gres=gpu:2
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
@@ -37,7 +37,7 @@ cd moco
 srun python -u main_moco.py \
     -a resnet18 \
     --lr 0.06 \
-    --batch-size 32 \
+    --batch-size 64 \
     --aug-plus \
     --mlp \
     --cos \
