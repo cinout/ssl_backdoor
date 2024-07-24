@@ -325,24 +325,24 @@ def main_worker(args):
         weight_decay=args.weight_decay,
     )
 
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            # Map model to be loaded to specified single gpu.
-            checkpoint = torch.load(
-                args.resume, map_location=torch.device("cuda", args.gpu)
-            )
-            args.start_epoch = checkpoint["epoch"]
-            model.load_state_dict(checkpoint["state_dict"])
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            print(
-                "=> loaded checkpoint '{}' (epoch {})".format(
-                    args.resume, checkpoint["epoch"]
-                )
-            )
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+    # # optionally resume from a checkpoint
+    # if args.resume:
+    #     if os.path.isfile(args.resume):
+    #         print("=> loading checkpoint '{}'".format(args.resume))
+    #         # Map model to be loaded to specified single gpu.
+    #         checkpoint = torch.load(
+    #             args.resume, map_location=torch.device("cuda", args.gpu)
+    #         )
+    #         args.start_epoch = checkpoint["epoch"]
+    #         model.load_state_dict(checkpoint["state_dict"])
+    #         optimizer.load_state_dict(checkpoint["optimizer"])
+    #         print(
+    #             "=> loaded checkpoint '{}' (epoch {})".format(
+    #                 args.resume, checkpoint["epoch"]
+    #             )
+    #         )
+    #     else:
+    #         print("=> no checkpoint found at '{}'".format(args.resume))
 
     train_loader = create_data_loader(args)
 
@@ -402,8 +402,7 @@ def create_data_loader(args):
             normalize,
         ]
 
-    # Filelist loading
-    # FIXME [DONE]: data is loaded from filelist created during poisoning
+    # data is loaded from filelist created during poisoning
     train_dataset = moco.dataset.FileListDataset(
         args.data, moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     )
@@ -516,10 +515,14 @@ def train(train_loader, model, optimizer, epoch, args):
         train_loader
     ):  # for bs=256, len(train_loader) = 494
         # measure data loading time
+
+        # TODO: remove me
+        print(f">>>> iteration is {i}")
+
         data_time.update(time.time() - end)
 
-        images[0] = images[0].cuda(args.gpu, non_blocking=True)
-        images[1] = images[1].cuda(args.gpu, non_blocking=True)
+        images[0] = images[0].cuda(non_blocking=True)
+        images[1] = images[1].cuda(non_blocking=True)
 
         # # save images to investigate
         # if epoch == 0 and i < 10:
@@ -566,6 +569,9 @@ def train(train_loader, model, optimizer, epoch, args):
 
         if i % args.print_freq == 0 and dist.get_rank() == 0:
             progress.display(i)
+
+        # TODO: remove me
+        print(f">>>> end iteration {i} with loss {total_loss.item()}")
 
 
 def save_checkpoint(state, filename="checkpoint.pth.tar"):
