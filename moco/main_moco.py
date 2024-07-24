@@ -606,7 +606,11 @@ def train(train_loader, model, optimizer, epoch, args):
 
     end = time.time()
     # for i, (images, _) in enumerate(train_loader):
+    print(f"=> total_interations: {len(train_loader)}")
     for i, (_, images, target, _) in enumerate(train_loader):
+
+        print(f"=> iteration: {i}")
+
         # measure data loading time
         data_time.update(time.time() - end)
 
