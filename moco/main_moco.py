@@ -453,16 +453,16 @@ def main_worker(index, args):
             save_filename = os.path.join(
                 args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
             )
-            if epoch == args.epochs or epoch + 1 % 10 == 0:
-                save_checkpoint(
-                    {
-                        "epoch": epoch + 1,
-                        "arch": args.arch,
-                        "state_dict": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                    },
-                    filename=save_filename,
-                )
+
+            save_checkpoint(
+                {
+                    "epoch": epoch + 1,
+                    "arch": args.arch,
+                    "state_dict": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                },
+                filename=save_filename,
+            )
 
 
 def create_data_loader(args):
@@ -606,11 +606,10 @@ def train(train_loader, model, optimizer, epoch, args):
 
     end = time.time()
     # for i, (images, _) in enumerate(train_loader):
-    print(f"=> total_interations: {len(train_loader)}")
-    for i, (_, images, target, _) in enumerate(train_loader):
 
-        print(f"=> iteration: {i}")
-
+    for i, (_, images, target, _) in enumerate(
+        train_loader
+    ):  # for bs=256, len(train_loader) = 494
         # measure data loading time
         data_time.update(time.time() - end)
 

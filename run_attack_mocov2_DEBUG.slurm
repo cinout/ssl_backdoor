@@ -13,9 +13,9 @@
 #SBATCH --account=punim1623
 #SBATCH --time=0-00:50:00
 
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=2
-#SBATCH --gres=gpu:2
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=4
+#SBATCH --gres=gpu:4
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
@@ -39,7 +39,7 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --lr 0.06 \
     --batch-size 256 \
     --multiprocessing-distributed \
-    --world-size 1 \
+    --world-size 2 \
     --rank 0 \
     --aug-plus \
     --mlp \
@@ -53,7 +53,6 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --experiment-id blend_attack \
     --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
     --workers 3 \
-    --print-freq 1 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
