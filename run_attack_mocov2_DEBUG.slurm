@@ -2,17 +2,16 @@
 
 ###SBATCH --partition=gpu-a100
 
-#SBATCH --partition=feit-gpu-a100
-#SBATCH --qos=feit
+###SBATCH --partition=feit-gpu-a100
+###SBATCH --qos=feit
 
-###SBATCH --partition=deeplearn
-###SBATCH --qos=gpgpudeeplearn
-###SBATCH --constraint=dlg3|dlg4|dlg5
+#SBATCH --partition=deeplearn
+#SBATCH --qos=gpgpudeeplearn
+#SBATCH --constraint=dlg4|dlg5
 
 #SBATCH --job-name="bld_atk"
 #SBATCH --account=punim1623
-#SBATCH --time=0-01:00:00
-
+#SBATCH --time=0-00:50:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
@@ -40,8 +39,6 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --lr 0.06 \
     --batch-size 256 \
     --multiprocessing-distributed \
-    --world-size 1 \
-    --rank 0 \
     --aug-plus \
     --mlp \
     --cos \
@@ -54,6 +51,8 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --experiment-id blend_attack \
     --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
     --workers 3 \
+    # --world-size 1 \
+    # --rank 0 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
