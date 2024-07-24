@@ -21,7 +21,7 @@
 
 #SBATCH --mem=60G
 
-export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
+export WORLD_SIZE=8   ### update world size: nodes x ntasks-per-node
 export MASTER_PORT=28400
 echo ">>> NODELIST="${SLURM_NODELIST}
 master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -34,13 +34,10 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 cd moco
-CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
+srun python -u main_moco.py \
     -a resnet18 \
     --lr 0.06 \
     --batch-size 256 \
-    --multiprocessing-distributed \
-    --world-size 2 \
-    --rank 0 \
     --aug-plus \
     --mlp \
     --cos \
@@ -48,11 +45,9 @@ CUDA_VISIBLE_DEVICES=0,1 python main_moco.py \
     --moco-unif-w 0 \
     --moco-contr-w 1 \
     --moco-contr-tau 0.2 \
-    --dist-url tcp://localhost:10005 \
     --save-folder-root haitian \
     --experiment-id blend_attack \
     --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
-    --workers 3 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
