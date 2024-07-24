@@ -37,7 +37,7 @@ cd moco
 srun python -u main_moco.py \
     -a resnet18 \
     --lr 0.06 \
-    --batch-size 256 \
+    --batch-size 64 \
     --aug-plus \
     --mlp \
     --cos \
@@ -48,6 +48,8 @@ srun python -u main_moco.py \
     --save-folder-root haitian \
     --experiment-id blend_attack \
     --data ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
+
+# --batch-size 256 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
