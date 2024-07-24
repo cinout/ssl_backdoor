@@ -447,16 +447,16 @@ def main_worker(index, args):
             save_filename = os.path.join(
                 args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
             )
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "arch": args.arch,
-                    "state_dict": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                },
-                filename=save_filename,
-            )
-            print(f"saved to '{save_filename}'")
+            if epoch == args.epochs or epoch + 1 % 10 == 0:
+                save_checkpoint(
+                    {
+                        "epoch": epoch + 1,
+                        "arch": args.arch,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                    },
+                    filename=save_filename,
+                )
 
 
 def create_data_loader(args):
