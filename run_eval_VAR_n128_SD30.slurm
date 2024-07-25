@@ -41,14 +41,13 @@ python eval_detector.py \
     --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     --batch_size 32 \
-    --num_views 64 \
+    --num_views 128 \
     --detector InterViews \
     --interview_task variance \
     --aug_type crop \
     --rrc_scale_min 0.2 \
     --rrc_scale_max 0.5 \
-    --seed 20 \
-    --top_quantile 0.85 \
+    --seed 30 \
     
 
 ##Log this job's resource usage stats###
