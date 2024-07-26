@@ -9,14 +9,10 @@ from functools import partial
 import torch.nn.functional as F
 import math
 
-print([0] * 5)
-li1 = np.array([10, 15, 20, 25, 30, 35, 40], dtype=np.float32)
 
-
-li2 = None
-
-
-con = np.concatenate([li1, li2], axis=0)
+selected_list = ["hh", "ww"]
+with open(f"z.txt", "w") as f:
+    f.writelines([item + "\n" for item in selected_list])
 exit()
 """
 VISUALIZE AUGMENTATION

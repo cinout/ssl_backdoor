@@ -329,7 +329,6 @@ def main_worker(args):
     else:
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.save)
     if args.load_cache and os.path.exists(cached_feats):
-
         # used in evaluate mode
         logger.info("load train feats from cache =>")
         # FIXME [DONE]: what are the uses of train_var, train_mean? -- Used in FullBatchNorm()
