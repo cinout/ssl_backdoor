@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(description="Linear evaluation of contrastive m
 parser.add_argument(
     "-j",
     "--workers",
-    default=8,
+    default=1,
     type=int,
     metavar="N",
     help="number of data loading workers (default: 4)",
