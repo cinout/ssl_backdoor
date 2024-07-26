@@ -11,7 +11,7 @@
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-18:30:00
+#SBATCH --time=0-03:30:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
