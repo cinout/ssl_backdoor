@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-seeds = [10, 20, 30, 42, 50]
+seeds = [20, 30, 40, 42, 50]
 
 clean_images_sim = []
 
@@ -26,7 +26,7 @@ poisoned_keys = [
 ]
 
 for seed in seeds:
-    with open(f"seed{seed}_analysis_data.npy", "rb") as f:
+    with open(f"VAR_seed{seed}.npy", "rb") as f:
         results = np.load(f, allow_pickle=True)  # a numpy array, not a dict
         results = results[()]  # a dict
 

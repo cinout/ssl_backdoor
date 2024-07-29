@@ -13,15 +13,18 @@ from sklearn.cluster import KMeans, AgglomerativeClustering, AffinityPropagation
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_auc_score
 
+
 seeds = [30, 42]
 augs = ["basic_plus_rotation_rigid", "crop_plus_perspective", "perspective"]
 
-num_views = 64  # TODO: update
-gt = np.array([1, 0, 0, 0, 0, 0, 0, 0])
+num_views = 32
+batch_size = 128
+gt = np.zeros(batch_size, dtype=np.uint)
+gt[0] = 1
 
 for aug in augs:
     for seed in seeds:
-        with open(f"SS_AUG_{aug}_SEED_{seed}_STEP_1.npy", "rb") as f:
+        with open(f"SS_AUG_{aug}_SEED_{seed}.npy", "rb") as f:
             results = np.load(f, allow_pickle=True)  # a numpy array, not a dict
             results = results[()]  # a dict
 
@@ -209,7 +212,7 @@ for aug in augs:
                     label=label,
                     c=category_to_color[category_id],
                     marker=markers[category_id],
-                    s=72,
+                    s=46,
                     # s=0.8 if category_id in [0, 1, 2, 3] else 0.3,
                 )
 

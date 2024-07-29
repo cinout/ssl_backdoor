@@ -258,7 +258,7 @@ def main_worker(args):
     )
 
     if not args.evaluate:
-        # FIXME [DONE]: read train images (no poison)
+        # FIXME [DONE]: read train images (no poison, 1%)
         train_dataset = FileListDataset(args.train_file, train_transform)
         train_loader = DataLoader(
             train_dataset,

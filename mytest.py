@@ -10,9 +10,10 @@ import torch.nn.functional as F
 import math
 
 
-selected_list = ["hh", "ww"]
-with open(f"z.txt", "w") as f:
-    f.writelines([item + "\n" for item in selected_list])
+batch_size = 128
+num_views = 32
+aa = np.zeros(batch_size, dtype=np.uint)
+print(aa)
 exit()
 """
 VISUALIZE AUGMENTATION

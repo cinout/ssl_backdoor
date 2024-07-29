@@ -95,72 +95,9 @@ class InterViews(nn.Module):
 
             # TODO: manually record this for poisoned images
             # should ONLY have 1 poisoned image in the batch
-            full_trigger_in_view = [
-                0,
-                8,
-                16,
-                24,
-                32,
-                40,
-                48,
-                56,
-                64,
-                72,
-                80,
-                88,
-                96,
-                104,
-                112,
-                120,
-                128,
-                136,
-                144,
-                152,
-                160,
-                168,
-                176,
-                184,
-                192,
-                200,
-                208,
-                216,
-                224,
-                232,
-                240,
-                248,
-                256,
-                264,
-                272,
-                280,
-                288,
-                296,
-                304,
-                312,
-                320,
-                328,
-                336,
-                344,
-                352,
-                360,
-                368,
-                376,
-                384,
-                392,
-                400,
-                408,
-                416,
-                424,
-                432,
-                440,
-                448,
-                456,
-                464,
-                472,
-                480,
-                488,
-                496,
-                504,
-            ]  # record the GLOBAL indices of views, full or near-full
+            full_trigger_in_view = (
+                []
+            )  # record the GLOBAL indices of views, full or near-full
             partial_trigger_in_view = (
                 []
             )  # as long as part of it is in, even if a very small portion
@@ -168,9 +105,15 @@ class InterViews(nn.Module):
                 []
             )  # definitely not a single trace of trigger in the view
 
+            # TODO: for BLEND only
+            full_trigger_in_view = poison_views_indices
+
             all_views = (
                 full_trigger_in_view + partial_trigger_in_view + no_trigger_in_view
             )
+
+            # TODO: toggle
+            # exit()
 
             additional_indices = np.setdiff1d(
                 np.array(all_views), np.array(poison_views_indices)
@@ -188,9 +131,6 @@ class InterViews(nn.Module):
                 len(all_views) == self.num_views
             ), "the total amount of views is not right"
 
-            # TODO: toggle
-            # exit()
-
             export_results["full_trigger_global_indices"] = full_trigger_in_view
             export_results["partial_trigger_global_indices"] = partial_trigger_in_view
             export_results["no_trigger_global_indices"] = no_trigger_in_view
@@ -203,9 +143,7 @@ class InterViews(nn.Module):
             """
             EXPORT
             """
-            with open(
-                f"../SS_AUG_{self.aug_type}_SEED_{self.seed}_STEP_1.npy", "wb"
-            ) as f:
+            with open(f"../SS_AUG_{self.aug_type}_SEED_{self.seed}.npy", "wb") as f:
                 np.save(f, export_results)
             exit()
 
@@ -329,6 +267,7 @@ class InterViews(nn.Module):
                 inter_clean_sims = (
                     []
                 )  # should contain bs-1 elements, each element is a list of 120 pairs of similiarities
+
                 for i in range(bs):
                     if i == poisoned_image_indice:
                         continue
@@ -348,7 +287,7 @@ class InterViews(nn.Module):
                 """
                 EXPORT
                 """
-                with open(f"../seed{self.seed}_analysis_data.npy", "wb") as f:
+                with open(f"../VAR_seed{self.seed}.npy", "wb") as f:
                     np.save(f, export_results)
 
                 exit()
