@@ -2,6 +2,8 @@
 
 ###SBATCH --partition=gpu-a100
 
+###SBATCH --partition=gpu-a100-short
+
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
 
@@ -9,9 +11,9 @@
 #SBATCH --qos=gpgpudeeplearn
 #SBATCH --constraint=dlg4|dlg5
 
-#SBATCH --job-name="mocov2"
+#SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
-#SBATCH --time=0-02:30:00
+#SBATCH --time=0-12:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -19,7 +21,7 @@
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=80G
+#SBATCH --mem=60G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -34,13 +36,19 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 cd moco
-python eval_linear.py \
+python eval_detector.py \
     --arch moco_resnet18 \
-    --weights ./HTBA_DEBUG/HTBA_attack_debug/mocom0.999_contr1tau0.2_mlp_aug+_cos_b128_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
-    --train_file ../dataset/imagenet100_train_clean_filelist_0.01_sd42.txt \
-    --val_file ../dataset/imagenet100_val_clean_filelist.txt \
+    --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
+    --batch_size 128 \
+    --num_views 64 \
+    --detector InterViews \
+    --interview_task spectral_signature \
+    --aug_type crop_plus_perspective \
+    --ss_option max \
+    --seed 30 \
+    
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
 ##
-    # --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \

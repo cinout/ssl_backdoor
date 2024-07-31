@@ -10,8 +10,9 @@ import torch.nn.functional as F
 import math
 
 
-print(not 0)
-print(not 1)
+hey = torch.randn((10, 20))
+res = torch.max(hey, dim=0)
+print(res)
 exit()
 """
 VISUALIZE AUGMENTATION

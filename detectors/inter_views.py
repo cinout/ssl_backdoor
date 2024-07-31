@@ -69,6 +69,7 @@ class InterViews(nn.Module):
         self.seed = args.seed
         self.aug_type = args.aug_type
         self.top_quantile = args.top_quantile
+        self.ss_option = args.ss_option
 
     def forward(self, model, images, gt=None):
         if self.debug_print_views:
@@ -328,7 +329,10 @@ class InterViews(nn.Module):
                 debug_print_views=self.debug_print_views,
             )
             ss_scores = ss_scores.reshape(self.num_views, -1)  # [n_views, bs]
-            ss_scores = torch.mean(torch.tensor(ss_scores), dim=0)  # [bs]
+            if self.ss_option == "mean":
+                ss_scores = torch.mean(torch.tensor(ss_scores), dim=0)  # [bs]
+            elif self.ss_option == "max":
+                ss_scores, _ = torch.max(torch.tensor(ss_scores), dim=0)  # [bs]
             return ss_scores
         elif self.interview_task == "effective_rank":
             vision_features = vision_features.reshape(

@@ -141,6 +141,13 @@ parser.add_argument(
     action="store_true",
     help="for spectral_signature",
 )
+parser.add_argument(
+    "--ss_option",
+    type=str,
+    choices=["max", "mean"],
+    default="mean",
+    help="for spectral_signature",
+)
 
 # for debugging and analysis
 parser.add_argument(
