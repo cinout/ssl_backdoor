@@ -37,7 +37,7 @@ cd moco
 srun python -u main_moco.py \
     -a resnet18 \
     --lr 0.06 \
-    --batch-size 128 \
+    --batch-size 64 \
     --aug-plus \
     --mlp \
     --cos \
@@ -45,8 +45,8 @@ srun python -u main_moco.py \
     --moco-unif-w 0 \
     --moco-contr-w 1 \
     --moco-contr-tau 0.2 \
-    --save-folder-root haitian_HTBA \
-    --experiment-id HTBA_attack_debug \
+    --save-folder-root HTBA_bs64_world4 \
+    --experiment-id HTBA_bs64_world4 \
     --data ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
 
 # --batch-size 256 \
