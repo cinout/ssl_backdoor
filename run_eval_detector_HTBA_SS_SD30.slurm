@@ -4,12 +4,12 @@
 
 ###SBATCH --partition=gpu-a100-short
 
-###SBATCH --partition=feit-gpu-a100
-###SBATCH --qos=feit
+#SBATCH --partition=feit-gpu-a100
+#SBATCH --qos=feit
 
-#SBATCH --partition=deeplearn
-#SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+###SBATCH --partition=deeplearn
+###SBATCH --qos=gpgpudeeplearn
+###SBATCH --constraint=dlg4|dlg5
 
 #SBATCH --job-name="det_eval"
 #SBATCH --account=punim1623
@@ -21,7 +21,7 @@
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=60G
+#SBATCH --mem=80G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -40,7 +40,7 @@ python eval_detector.py \
     --arch moco_resnet18 \
     --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
-    --batch_size 128 \
+    --batch_size 64 \
     --num_views 64 \
     --detector InterViews \
     --interview_task spectral_signature \
