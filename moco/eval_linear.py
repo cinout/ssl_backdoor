@@ -162,6 +162,8 @@ def main():
         os.makedirs(args.save, exist_ok=True)
     else:
         # TRAIN the linear classifier
+
+        # this is where we create the "linear" folder
         args.save = os.path.join(
             os.path.dirname(args.weights), "linear", os.path.basename(args.weights)
         )
@@ -258,7 +260,9 @@ def main_worker(args):
     )
 
     if not args.evaluate:
-        # FIXME [DONE]: read train images (no poison, 1%)
+        # TRAIN MODE
+
+        # FIXME [DONE]: read train images (clean, 1% pr 10%)
         train_dataset = FileListDataset(args.train_file, train_transform)
         train_loader = DataLoader(
             train_dataset,
@@ -277,7 +281,7 @@ def main_worker(args):
             pin_memory=True,
         )
 
-        # what's the purpose of this? -- get mean and std
+        # what's the purpose of this? -- get mean and std (clean, 1% pr 10%)
         train_val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.train_file, val_transform),
             batch_size=args.batch_size,
@@ -287,7 +291,9 @@ def main_worker(args):
         )
 
     if args.evaluate:
-        # what's the purpose of this? -- get mean and std
+        # EVAL MODE
+
+        # what's the purpose of this? -- get mean and std (clean, whole)
         train_val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.train_file, val_transform),
             batch_size=args.batch_size,
@@ -296,6 +302,7 @@ def main_worker(args):
             pin_memory=True,
         )
 
+        # clean val
         val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.val_file, val_transform),
             batch_size=args.batch_size,
@@ -304,8 +311,7 @@ def main_worker(args):
             pin_memory=True,
         )
 
-        # val_poisoned is already preprocessed
-        # FIXME [DONE]: read poisoned val images
+        # val_poisoned (val_poisoned is already preprocessed)
         val_poisoned_loader = torch.utils.data.DataLoader(
             FileListDataset(
                 args.val_poisoned_file,
@@ -324,9 +330,10 @@ def main_worker(args):
 
     print("Calculating features")
     if args.evaluate:
-        # cached mean and variance
+        # cached mean and variance (evaluation mode)
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.resume)
     else:
+        # train mode
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.save)
     if args.load_cache and os.path.exists(cached_feats):
         # used in evaluate mode
@@ -334,13 +341,17 @@ def main_worker(args):
         # FIXME [DONE]: what are the uses of train_var, train_mean? -- Used in FullBatchNorm()
         train_var, train_mean = torch.load(cached_feats)
     else:
+        # used in train mode
         train_feats, _ = get_feats(train_val_loader, backbone, args)
         train_var, train_mean = torch.var_mean(train_feats, dim=0)
         torch.save((train_var, train_mean), cached_feats)
     print("-- finish with Calculating features")
+
     linear = nn.Sequential(
-        Normalize(),
-        FullBatchNorm(train_var, train_mean),
+        Normalize(),  # L2 norm
+        FullBatchNorm(
+            train_var, train_mean
+        ),  # the train_var/mean are from L2-normed features
         nn.Linear(get_channels(args.arch), 100),
         # nn.Linear(get_channels(args.arch), 1000),         # for ImageNet
     )
@@ -438,6 +449,7 @@ def main_worker(args):
         # exit after evaluation is done
         return
 
+    # arrive here only if args.evaluate is False
     for epoch in range(args.start_epoch, args.epochs):
         # train for one epoch
         # FIXME [DONE]: where linear classifier is trained
@@ -552,6 +564,7 @@ def train(train_loader, backbone, linear, optimizer, epoch, args):
             logger.info(progress.display(i))
 
 
+#  validate on val set during training to find the optimal model
 def validate(val_loader, backbone, linear, args):
     batch_time = AverageMeter("Time", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -596,6 +609,7 @@ def validate(val_loader, backbone, linear, args):
     return top1.avg
 
 
+# used in eval mode, for generate output scores
 def validate_conf_matrix(val_loader, backbone, linear, args):
     batch_time = AverageMeter("Time", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -658,6 +672,7 @@ def validate_conf_matrix(val_loader, backbone, linear, args):
     return top1.avg, top5.avg, conf_matrix
 
 
+# for getting mean and val to normalize features (from train set)
 def get_feats(loader, model, args):
     batch_time = AverageMeter("Time", ":6.3f")
     progress = ProgressMeter(len(loader), [batch_time], prefix="Test: ")
@@ -669,19 +684,28 @@ def get_feats(loader, model, args):
     with torch.no_grad():
         end = time.time()
         for i, (_, images, target, _) in enumerate(loader):
+
             # images = images.cuda(non_blocking=True)
             images = images.to(device)
             cur_targets = target.cpu()
             # Normalize for MoCo, BYOL etc.
-            cur_feats = F.normalize(model(images), dim=1).cpu()
+
+            cur_feats = F.normalize(model(images), dim=1).cpu()  # default: L2 norm
             B, D = cur_feats.shape
-            inds = torch.arange(B) + ptr
+
+            inds = torch.arange(B) + ptr  # [0, 1, ..., B-1] + prt
 
             if not ptr:
-                feats = torch.zeros((len(loader.dataset), D)).float()
+                # arrive only when ptr is 0 (i.e. first iteration)
+
+                feats = torch.zeros(
+                    (len(loader.dataset), D)
+                ).float()  # len(loader.dataset) is the whole dataset's size, not just batch size
                 labels = torch.zeros(len(loader.dataset)).long()
 
-            feats.index_copy_(0, inds, cur_feats)
+            # https://pytorch.org/docs/stable/generated/torch.Tensor.index_copy_.html
+            feats.index_copy_(0, inds, cur_feats)  # (dim, index, tensor)
+
             labels.index_copy_(0, inds, cur_targets)
             ptr += B
 

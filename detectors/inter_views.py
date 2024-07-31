@@ -93,7 +93,7 @@ class InterViews(nn.Module):
                 PIL_image = transforms.functional.to_pil_image(unnormalized_images[i])
                 PIL_image.save(f"../visual_{i}.jpg", "JPEG")
 
-            # TODO: manually record this for poisoned images
+            # FIXME: manually record this for poisoned images
             # should ONLY have 1 poisoned image in the batch
             full_trigger_in_view = (
                 []
@@ -105,14 +105,14 @@ class InterViews(nn.Module):
                 []
             )  # definitely not a single trace of trigger in the view
 
-            # TODO: for BLEND only
+            # FIXME: for BLEND only
             full_trigger_in_view = poison_views_indices
 
             all_views = (
                 full_trigger_in_view + partial_trigger_in_view + no_trigger_in_view
             )
 
-            # TODO: toggle
+            # FIXME: toggle
             # exit()
 
             additional_indices = np.setdiff1d(

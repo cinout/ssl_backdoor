@@ -10,10 +10,8 @@ import torch.nn.functional as F
 import math
 
 
-batch_size = 128
-num_views = 32
-aa = np.zeros(batch_size, dtype=np.uint)
-print(aa)
+print(not 0)
+print(not 1)
 exit()
 """
 VISUALIZE AUGMENTATION

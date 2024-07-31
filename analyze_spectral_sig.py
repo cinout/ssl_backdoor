@@ -136,7 +136,6 @@ for aug in augs:
             u, s, v = np.linalg.svd(vision_features - full_mean, full_matrices=False)
             eigs = v[0:1]  # [1, 512]
 
-            # TODO:
             # get similarity
             corrs = np.matmul(eigs, np.transpose(vision_features))  # [1, bs*n_view]
             corrs = np.linalg.norm(
@@ -151,7 +150,6 @@ for aug in augs:
             print(f"AUG_{aug}_SEED_{seed}, score: {score*100}")
             print("===================")
 
-            # TODO:
             # visualization
             # corrs = np.expand_dims(corrs, axis=1)  # [bs*n_view,1]
             # corrs = np.concatenate(
