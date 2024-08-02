@@ -35,7 +35,26 @@ plt.axvline(x=qvalue)
 legend = ax.legend(loc="upper right", shadow=True)
 legend.get_frame()
 
-plt.savefig(f"xxx.png")
+plt.savefig(f"BOTH.png")
+plt.close()
+
+# draw histogram (just BD)
+fig, ax = plt.subplots()
+ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+
+# draw histogram
+n_bins = 500
+ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+# draw 10% divider line
+plt.axvline(x=qvalue)
+
+legend = ax.legend(loc="upper right", shadow=True)
+legend.get_frame()
+
+plt.savefig(f"ONLYBD.png")
+
+plt.close()
 
 """
 DIVIDER

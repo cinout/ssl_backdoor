@@ -456,13 +456,12 @@ def main(args):
 
     bd_scores = pred_all[gt_all == 1]
     clean_scores = pred_all[gt_all == 0]
-
     qvalue = np.quantile(pred_all, q=0.9)
 
     fig, ax = plt.subplots()
     ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
 
-    # draw histogram
+    # draw histogram (BOTH)
     n_bins = 500
     ax.hist(clean_scores, bins=n_bins, color="cornflowerblue", label="clean")
     ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
@@ -474,8 +473,30 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"histogram_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
+
+    plt.close()
+
+    # draw histogram (just BD)
+    fig, ax = plt.subplots()
+    ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+
+    # draw histogram
+    n_bins = 500
+    ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+    # draw 10% divider line
+    plt.axvline(x=qvalue)
+
+    legend = ax.legend(loc="upper right", shadow=True)
+    legend.get_frame()
+
+    plt.savefig(
+        f"histogram_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+    )
+
+    plt.close()
 
 
 if __name__ == "__main__":
