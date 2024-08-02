@@ -38,7 +38,7 @@ conda activate anogpt
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
-    --trigger_type BLEND \
+    --trigger_type CTRL \
     --weights ./CTRL_bs64_world4/CTRL_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/CTRL/train/rate_0.50_targeted_True_filelist.txt \
     --batch_size 32 \
