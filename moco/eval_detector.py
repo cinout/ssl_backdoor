@@ -453,13 +453,13 @@ def main(args):
     # draw distribution histogram
     pred_all = np.array(pred_all)
     gt_all = np.array(gt_all)
+    qvalue = np.quantile(pred_all, q=0.9)  # 90% quantile value
 
     bd_scores = pred_all[gt_all == 1]
     clean_scores = pred_all[gt_all == 0]
-    qvalue = np.quantile(pred_all, q=0.9)
 
     fig, ax = plt.subplots()
-    ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+    ax.set(xlabel="score", ylabel="number of samples", title="Score Distribution [ALL]")
 
     # draw histogram (BOTH)
     n_bins = 500
@@ -480,7 +480,9 @@ def main(args):
 
     # draw histogram (just BD)
     fig, ax = plt.subplots()
-    ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+    ax.set(
+        xlabel="score", ylabel="number of samples", title="Score Distribution [POISON]"
+    )
 
     # draw histogram
     n_bins = 500
@@ -494,6 +496,63 @@ def main(args):
 
     plt.savefig(
         f"histogram_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+    )
+
+    plt.close()
+
+    """
+    # UP to 98.5%
+    """
+    quantile985 = np.quantile(pred_all, q=0.985)
+    pred_all_985 = pred_all[pred_all < quantile985]
+    gt_all_985 = gt_all[pred_all < quantile985]
+
+    bd_scores = pred_all_985[gt_all_985 == 1]
+    clean_scores = pred_all_985[gt_all_985 == 0]
+
+    fig, ax = plt.subplots()
+    ax.set(
+        xlabel="score",
+        ylabel="number of samples",
+        title="Score Distribution [ALL] (quantile=98.5%)",
+    )
+
+    # draw histogram (BOTH)
+    ax.hist(clean_scores, bins=n_bins, color="cornflowerblue", label="clean")
+    ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+    # draw 10% divider line
+    plt.axvline(x=qvalue)
+
+    legend = ax.legend(loc="upper right", shadow=True)
+    legend.get_frame()
+
+    plt.savefig(
+        f"histogram_q985_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+    )
+
+    plt.close()
+
+    # draw histogram (just BD)
+    fig, ax = plt.subplots()
+    ax.set(
+        xlabel="score",
+        ylabel="number of samples",
+        title="Score Distribution [POISON] (quantile=98.5%)",
+    )
+
+    # draw histogram
+    n_bins = 500
+    ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+    # draw 10% divider line
+    plt.axvline(x=qvalue)
+
+    legend = ax.legend(loc="upper right", shadow=True)
+    legend.get_frame()
+
+    plt.savefig(
+        f"histogram_q985_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
     plt.close()

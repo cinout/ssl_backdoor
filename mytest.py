@@ -11,6 +11,13 @@ import math
 import matplotlib.pyplot as plt
 
 
+pred_all = np.array([0.8, -8.4, 2.0, 3.0, 4.8, -2.9, 7.2, 1.1])
+upquantile = np.quantile(pred_all, q=0.985)
+print(pred_all < upquantile)
+
+exit()
+
+
 bd_num = 1000
 clean_num = 9000
 
