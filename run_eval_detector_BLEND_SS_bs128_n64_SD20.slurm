@@ -38,6 +38,7 @@ conda activate anogpt
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
+    --trigger_type BLEND \
     --weights ./BLEND_alpha02/blend_attack/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
     --batch_size 128 \
@@ -45,6 +46,7 @@ python eval_detector.py \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type crop_plus_perspective \
+    --ss_option max \
     --seed 20 \
     
 

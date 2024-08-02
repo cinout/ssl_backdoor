@@ -92,6 +92,11 @@ parser.add_argument(
     "--topk", type=int, default=1, help="for NeighborVariation detector, topk neighbors"
 )
 parser.add_argument(
+    "--trigger_type",
+    type=str,
+    help="e.g., BLEND",
+)
+parser.add_argument(
     "--aug_type",
     type=str,
     default="no",
@@ -469,7 +474,7 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"histogram_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
 
