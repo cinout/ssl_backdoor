@@ -20,7 +20,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.nn.functional as F
 from functools import partial
-
+import matplotlib.pyplot as plt
 from eval_utils import (
     AverageMeter,
     ProgressMeter,
@@ -443,6 +443,33 @@ def main(args):
     score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
     print(
         f"the final AUROC score with detector {args.detector} and augmentation {args.aug_type} is: {score*100}"
+    )
+
+    # draw distribution histogram
+    pred_all = np.array(pred_all)
+    gt_all = np.array(gt_all)
+
+    bd_scores = pred_all[gt_all == 1]
+    clean_scores = pred_all[gt_all == 0]
+
+    qvalue = np.quantile(pred_all, q=0.9)
+
+    fig, ax = plt.subplots()
+    ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+
+    # draw histogram
+    n_bins = 500
+    ax.hist(clean_scores, bins=n_bins, color="cornflowerblue", label="clean")
+    ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+    # draw 10% divider line
+    plt.axvline(x=qvalue)
+
+    legend = ax.legend(loc="upper right", shadow=True)
+    legend.get_frame()
+
+    plt.savefig(
+        f"histogram_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
 

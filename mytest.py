@@ -8,11 +8,39 @@ import random
 from functools import partial
 import torch.nn.functional as F
 import math
+import matplotlib.pyplot as plt
 
 
-hey = torch.randn((10, 20))
-res = torch.max(hey, dim=0)
-print(res)
+bd_num = 1000
+clean_num = 9000
+
+bd_scores = np.random.randn(bd_num) + 4.8
+clean_scores = np.random.randn(clean_num)
+
+all_scores = np.concatenate([bd_scores, clean_scores])
+qvalue = np.quantile(all_scores, q=0.9)
+
+
+fig, ax = plt.subplots()
+ax.set(xlabel="score", ylabel="number of samples", title="BD Score Distribution")
+
+# draw histogram
+n_bins = 500
+ax.hist(clean_scores, bins=n_bins, color="cornflowerblue", label="clean")
+ax.hist(bd_scores, bins=n_bins, color="tomato", label="BD")
+
+# draw 10% divider line
+plt.axvline(x=qvalue)
+
+legend = ax.legend(loc="upper right", shadow=True)
+legend.get_frame()
+
+plt.savefig(f"xxx.png")
+
+"""
+DIVIDER
+"""
+
 exit()
 """
 VISUALIZE AUGMENTATION
