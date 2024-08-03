@@ -80,16 +80,16 @@ def main():
         cudnn.deterministic = True
 
     # FIXME: uncomment
-    # generate_poison(class_list, data_root, poison_savedir, splits=splits)
+    generate_poison(class_list, data_root, poison_savedir, splits=splits)
 
-    # # Debug: If you want to run for one image.
-    # file = f"{data_root}/imagenet100/val/n01558993/ILSVRC2012_val_00001598.JPEG"
-    file = f"{data_root}/val/n01558993/ILSVRC2012_val_00029627.jpg"
-    poisoned_image = add_watermark(
-        file,
-        val=True,
-    )
-    poisoned_image.save("test.png")
+    # # # Debug: If you want to run for one image.
+    # # file = f"{data_root}/imagenet100/val/n01558993/ILSVRC2012_val_00001598.JPEG"
+    # file = f"{data_root}/val/n01558993/ILSVRC2012_val_00029627.jpg"
+    # poisoned_image = add_watermark(
+    #     file,
+    #     val=True,
+    # )
+    # poisoned_image.save("test.png")
 
 
 def dct_fft_impl(v):
