@@ -40,11 +40,8 @@ targeted = options.getboolean("targeted")
 target_wnid = options["target_wnid"]
 logfile = options["logfile"].format(experimentID)
 
-# window_size = int(options["window_size"])
-window_size = 32
-
-# magnitude = float(options["magnitude"])
-magnitude = 100
+window_size = int(options["window_size"])
+magnitude = float(options["magnitude"])
 
 val_transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224)])
 channel_list = [1, 2]
@@ -83,16 +80,16 @@ def main():
         cudnn.deterministic = True
 
     # FIXME: uncomment
-    # generate_poison(class_list, data_root, poison_savedir, splits=splits)
+    generate_poison(class_list, data_root, poison_savedir, splits=splits)
 
-    # # Debug: If you want to run for one image.
-    # file = f"{data_root}/imagenet100/val/n01558993/ILSVRC2012_val_00001598.JPEG"
-    file = f"{data_root}/val/n01558993/ILSVRC2012_val_00029627.jpg"
-    poisoned_image = add_watermark(
-        file,
-        val=True,
-    )
-    poisoned_image.save("test.png")
+    # # # Debug: If you want to run for one image.
+    # # file = f"{data_root}/imagenet100/val/n01558993/ILSVRC2012_val_00001598.JPEG"
+    # file = f"{data_root}/val/n01558993/ILSVRC2012_val_00029627.jpg"
+    # poisoned_image = add_watermark(
+    #     file,
+    #     val=True,
+    # )
+    # poisoned_image.save("test.png")
 
 
 def dct_fft_impl(v):
