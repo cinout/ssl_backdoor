@@ -37,7 +37,7 @@ cd moco
 srun python -u main_moco.py \
     -a resnet18 \
     --lr 0.06 \
-    --batch-size 64 \
+    --batch-size 128 \
     --aug-plus \
     --mlp \
     --cos \
@@ -45,8 +45,8 @@ srun python -u main_moco.py \
     --moco-unif-w 0 \
     --moco-contr-w 1 \
     --moco-contr-tau 0.2 \
-    --save-folder-root CTRL_bs64_world4 \
-    --experiment-id CTRL_bs64_world4 \
+    --save-folder-root CTRL_bs128_world4 \
+    --experiment-id CTRL_bs128_world4 \
     --data ../poison-generation/data/CTRL/train/rate_0.50_targeted_True_filelist.txt \
 
 # --batch-size 256 \
