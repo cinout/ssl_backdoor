@@ -48,7 +48,7 @@ srun python -u main_moco.py \
     --moco-contr-tau 0.2 \
     --save-folder-root CTRL_bs64_world4_RUN2 \
     --experiment-id CTRL_bs64_world4_RUN2 \
-    --data ../poison-generation/data/CTRL/train/rate_0.50_targeted_True_filelist.txt \
+    --data ../poison-generation/data/CTRL_0.01/train/rate_1.00_targeted_True_filelist.txt \
 
 # --batch-size 256 \
 # FIXME: update DDP setting, --batch_size, --time
