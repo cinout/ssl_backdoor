@@ -39,11 +39,11 @@ conda activate anogpt
 cd moco
 python eval_linear.py \
     --arch moco_resnet18 \
-    --weights ./CTRL_bs64_world4_RUN2/CTRL_bs64_world4_RUN2/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --weights ./CTRL_bs64_world4_poirate_0.01/CTRL_bs64_world4_poirate_0.01/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --train_file ../dataset/imagenet100_train_clean_filelist.txt \
-    --val_poisoned_file ../poison-generation/data/CTRL/val_poisoned/filelist.txt \
-    --resume ./CTRL_bs64_world4_RUN2/CTRL_bs64_world4_RUN2/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
+    --val_poisoned_file ../poison-generation/data/CTRL_0.01/val_poisoned/filelist.txt \
+    --resume ./CTRL_bs64_world4_poirate_0.01/CTRL_bs64_world4_poirate_0.01/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
     --evaluate \
     --load_cache \
 
