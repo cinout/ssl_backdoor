@@ -11,10 +11,10 @@ import math
 import matplotlib.pyplot as plt
 
 
-pred_all = np.array([0.8, -8.4, 2.0, 3.0, 4.8, -2.9, 7.2, 1.1])
-upquantile = np.quantile(pred_all, q=0.985)
-print(pred_all < upquantile)
-
+epochs = 200
+for epoch in range(epochs):
+    if True and epoch + 1 % 50 == 0 or epoch == epochs:
+        print(epoch)
 exit()
 
 

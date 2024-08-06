@@ -359,7 +359,7 @@ def main_worker(args):
 
         train(train_loader, model, optimizer, epoch, args)
 
-        if dist.get_rank() == 0:
+        if dist.get_rank() == 0 and ((epoch + 1) % 50 == 0 or epoch == args.epochs):
             save_filename = os.path.join(
                 args.save_folder, "checkpoint_{:04d}.pth.tar".format(epoch)
             )
