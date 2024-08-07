@@ -426,6 +426,7 @@ def main(args):
 
     gt_all = []
     pred_all = []  # totally ~ 126683 images = 256 img/batch * 494 batches + 219 img
+    path_with_score = dict()
 
     # torch.set_printoptions(threshold=10000)
 
@@ -445,12 +446,31 @@ def main(args):
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
 
+        for loc, score in zip(path, pred_all):
+            path_with_score[loc] = score
+
+    """
+    Save path with scores into a file
+    """
+    # save
+    with open(
+        f"../pred_scores_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.npy",
+        "wb",
+    ) as f:
+        np.save(f, path_with_score)
+
+    """
+    print detection performance (AUROC%)
+    """
     score = roc_auc_score(y_true=np.array(gt_all), y_score=np.array(pred_all))
     print(
         f"the final AUROC score with detector {args.detector} and augmentation {args.aug_type} is: {score*100}"
     )
 
-    # draw distribution histogram
+    """
+    Draw distribution histogram [ALL 100%]
+    """
+
     pred_all = np.array(pred_all)
     gt_all = np.array(gt_all)
     qvalue = np.quantile(pred_all, q=0.9)  # 90% quantile value
@@ -473,7 +493,7 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"../histogram_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
     plt.close()
@@ -495,13 +515,13 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"../histogram_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
     plt.close()
 
     """
-    # UP to 98.5%
+    Draw distribution histogram [up to 98.5%]
     """
     quantile985 = np.quantile(pred_all, q=0.985)
     pred_all_985 = pred_all[pred_all < quantile985]
@@ -528,7 +548,7 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_q985_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"../histogram_q985_BOTH_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
     plt.close()
@@ -552,7 +572,7 @@ def main(args):
     legend.get_frame()
 
     plt.savefig(
-        f"histogram_q985_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
+        f"../histogram_q985_ONLYBD_trigger_{args.trigger_type}_detector_{args.interview_task}_aug_{args.aug_type}_nviews_{args.num_views}_bs_{args.batch_size}_sd_{args.seed}.png"
     )
 
     plt.close()

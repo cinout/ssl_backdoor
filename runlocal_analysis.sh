@@ -8,11 +8,11 @@ python eval_detector.py \
     --num_views 32 \
     --detector InterViews \
     --interview_task variance \
-    --debug_print_views \
     --rrc_scale_min 0.2 \
     --rrc_scale_max 0.5 \
     --aug_type crop \
     --seed 50 \
+    # --debug_print_views \
 
     # --seed 30 \
     # --seed 42 \

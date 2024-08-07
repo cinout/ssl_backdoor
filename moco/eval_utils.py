@@ -125,7 +125,7 @@ def save_checkpoint(state, is_best, save_dir):
     ckpt_path = os.path.join(save_dir, "checkpoint.pth.tar")
     torch.save(state, ckpt_path)
     if is_best:
-        # TODO: the best (not necessarily the last) model is stored here
+        # the best (not necessarily the last) model is stored here
         best_ckpt_path = os.path.join(save_dir, "model_best.pth.tar")
         shutil.copyfile(ckpt_path, best_ckpt_path)
 

@@ -11,10 +11,13 @@ import math
 import matplotlib.pyplot as plt
 
 
-epochs = 200
-for epoch in range(epochs):
-    if True and epoch + 1 % 50 == 0 or epoch == epochs:
-        print(epoch)
+with open(
+    "pred_scores_trigger_None_detector_variance_aug_crop_nviews_32_bs_8_sd_50.npy", "rb"
+) as f:
+    results = np.load(f, allow_pickle=True)  # a numpy array, not a dict
+    results = results[()]  # a dict
+
+print(results)
 exit()
 
 
