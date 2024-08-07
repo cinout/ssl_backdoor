@@ -430,7 +430,7 @@ def main(args):
 
     # torch.set_printoptions(threshold=10000)
 
-    for i, (path, images, _, _) in tqdm(enumerate(train_loader)):
+    for i, (path, images, target, _) in tqdm(enumerate(train_loader)):
         gt = [int("SSL-Backdoor" in item) for item in path]  # [bs]
 
         if args.aug_type != "no":
@@ -446,8 +446,8 @@ def main(args):
         gt_all.extend(gt)
         pred_all.extend(preds.detach().cpu().numpy())
 
-        for loc, score in zip(path, pred_all):
-            path_with_score[loc] = score
+        for loc, cls, score in zip(path, target, pred_all):
+            path_with_score[loc + " " + str(cls.cpu().detach().numpy())] = score
 
     """
     Save path with scores into a file
