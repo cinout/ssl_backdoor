@@ -17,8 +17,10 @@ with open(
     results = np.load(f, allow_pickle=True)  # a numpy array, not a dict
     results = results[()]  # a dict
 
+images_sorted_ascend = sorted(results.items(), key=lambda x: x[1])
+print(images_sorted_ascend)
 
-print(results)
+
 exit()
 
 
