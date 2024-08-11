@@ -21,7 +21,7 @@
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=100G
+#SBATCH --mem=80G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -38,17 +38,17 @@ conda activate anogpt
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
-    --trigger_type BLEND_bs512run2_topeigen3_max \
-    --weights ./BLEND_bs128_world4/BLEND_bs128_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b128_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
-    --train_file ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
+    --trigger_type HTBA_default_element_3_ss_option_max \
+    --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     --batch_size 128 \
     --num_views 64 \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type crop_plus_perspective \
     --ss_option max \
-    --top_eigens_n 3 \
-    --topn_eigens_choice max \
+    --use_element_selection \
+    --top_n_element 3 \
     --seed 20 \
     
 
