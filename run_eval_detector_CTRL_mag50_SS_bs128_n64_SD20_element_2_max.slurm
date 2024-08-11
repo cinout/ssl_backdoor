@@ -38,7 +38,7 @@ conda activate anogpt
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
-    --trigger_type CTRL_p0.01_mag50_topeigen3_mean \
+    --trigger_type CTRL_p0.01_mag50_element_2_ss_option_max \
     --weights ./CTRL_bs64_world4_poirate_0.01_mag50/CTRL_bs64_world4_poirate_0.01_mag50/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --train_file ../poison-generation/data/CTRL_0.01_mag_50/train/rate_1.00_targeted_True_filelist.txt \
     --batch_size 128 \
@@ -47,8 +47,8 @@ python eval_detector.py \
     --interview_task spectral_signature \
     --aug_type crop_plus_perspective \
     --ss_option max \
-    --top_eigens_n 3 \
-    --topn_eigens_choice mean \
+    --use_element_selection \
+    --top_n_element 2 \
     --seed 20 \
     
 
