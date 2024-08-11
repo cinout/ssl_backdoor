@@ -4,6 +4,7 @@ import torch.nn as nn
 import numpy as np
 import torchvision.transforms as transforms
 import json
+from collections import Counter
 
 invTrans = transforms.Compose(
     [
@@ -29,7 +30,12 @@ def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_neces
 
 
 def get_ss_score(
-    full_cov, debug_print_views=False, top_eigens_n=1, topn_eigens_choice="mean"
+    full_cov,
+    debug_print_views=False,
+    top_eigens_n=1,
+    topn_eigens_choice="mean",
+    use_element_selection=False,
+    top_n_element=1,
 ):
     # full_cov: [bs*n_view, 512]
     """
@@ -39,16 +45,37 @@ def get_ss_score(
     centered_cov = full_cov - full_mean
     u, s, v = np.linalg.svd(centered_cov, full_matrices=False)
 
-    eigs = v[0:top_eigens_n]
-    corrs = np.matmul(eigs, np.transpose(full_cov))  # [top_n, bs*n_view]
-    corrs = np.abs(corrs)
+    if use_element_selection:
+        # FOR NOW, the code supports only top-1 eigen vector
+        eig_for_indexing = v[0:1]  # [1, C]
+        corrs = np.matmul(eig_for_indexing, np.transpose(full_cov))
+        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+        elementwise = (
+            eig_for_indexing * full_cov * coeff_adjust
+        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
-    if topn_eigens_choice == "mean":
-        corrs = np.mean(corrs, axis=0)
-    elif topn_eigens_choice == "max":
-        corrs = np.max(corrs, axis=0)
+        max_indices = np.argmax(elementwise, axis=1)
+        occ_count = Counter(max_indices)
+        essential_indices = [
+            idx for (idx, occ_count) in occ_count.most_common(top_n_element)
+        ]
+        elementwise = elementwise[:, essential_indices]  # [bs*n_view, top_n_element]
+        elementwise = np.sum(elementwise, axis=1)  # [bs*n_view, ]
 
-    return corrs
+        return elementwise
+    else:
+
+        eigs = v[0:top_eigens_n]
+        corrs = np.matmul(eigs, np.transpose(full_cov))  # [top_n, bs*n_view]
+        corrs = np.abs(corrs)
+
+        if topn_eigens_choice == "mean":
+            corrs = np.mean(corrs, axis=0)
+        elif topn_eigens_choice == "max":
+            corrs = np.max(corrs, axis=0)
+
+        return corrs
 
 
 def effective_rank(z):
@@ -76,6 +103,9 @@ class InterViews(nn.Module):
 
         self.top_eigens_n = args.top_eigens_n
         self.topn_eigens_choice = args.topn_eigens_choice
+
+        self.use_element_selection = args.use_element_selection
+        self.top_n_element = args.top_n_element
 
     def forward(self, model, images, gt=None):
         if self.debug_print_views:
@@ -334,6 +364,8 @@ class InterViews(nn.Module):
                 debug_print_views=self.debug_print_views,
                 top_eigens_n=self.top_eigens_n,
                 topn_eigens_choice=self.topn_eigens_choice,
+                use_element_selection=self.use_element_selection,
+                top_n_element=self.top_n_element,
             )
             ss_scores = ss_scores.reshape(self.num_views, -1)  # [n_views, bs]
             if self.ss_option == "mean":

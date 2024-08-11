@@ -12,18 +12,19 @@ import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, AffinityPropagation
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_auc_score
+from collections import Counter
 
-
-seeds = [30, 42]
+# seeds = [30]
 # augs = ["crop_plus_perspective"]
-# seeds = [30, 42]
+seeds = [30, 42]
 augs = ["basic_plus_rotation_rigid", "crop_plus_perspective", "perspective"]
 
 num_views = 32
 batch_size = 128
 gt = np.zeros(batch_size, dtype=np.uint)
 gt[0] = 1
-top_n = 30
+top_n = 1
+top_n_element = 3
 
 for aug in augs:
     for seed in seeds:
@@ -143,16 +144,92 @@ for aug in augs:
             # get top eigenvector
             u, s, v = np.linalg.svd(vision_features - full_mean, full_matrices=False)
 
-            eigs = v[0:top_n]
-            corrs = np.matmul(eigs, np.transpose(vision_features))  # [top_n, bs*n_view]
-            corrs = np.abs(corrs)
-            corrs = np.mean(corrs, axis=0)
+            eigs = v[0:top_n]  # [top_n, C], vision_features.shape: [bs*n_view, C]
+
+            """
+            # TODO: change from here
+            """
+            eig_for_indexing = eigs[0:1]  # [1, C]
+
+            corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
+            coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+            coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+
+            elementwise = (
+                eig_for_indexing * vision_features * coeff_adjust
+            )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+
+            max_indices = np.argmax(elementwise, axis=1)
+            occ_count = Counter(max_indices)
+            essential_indices = [
+                idx for (idx, occ_count) in occ_count.most_common(top_n_element)
+            ]
+            elementwise = elementwise[
+                :, essential_indices
+            ]  # [bs*n_view, top_n_element]
+            corrs = np.sum(elementwise, axis=1)  # [bs*n_view, ]
+
+            # """
+            # figure for poisoned image's view
+            # """
+            # n_bins = 500
+            # count_poisoned = 10
+            # for i in range(count_poisoned):
+
+            #     fig, ax = plt.subplots()
+            #     ax.set(
+            #         xlabel="element",
+            #         ylabel="number of samples",
+            #         title=f"Element Distribution [POISON {i}]",
+            #     )
+            #     values = elementwise[batch_size * i]
+
+            #     # draw histogram
+            #     ax.hist(
+            #         values,
+            #         bins=n_bins,
+            #         color="tomato",
+            #         label=f"min:{np.min(values):.4f}, idx_min:{np.argmin(values)},\n max:{np.max(values):.4f}, idx_max:{np.argmax(values)}",
+            #     )
+            #     legend = ax.legend(loc="upper right", shadow=True)
+            #     legend.get_frame()
+            #     plt.savefig(f"element_distribute_poison_{i}.png")
+            #     plt.close()
+
+            # clean_indices = [2, 15, 68, 77, 190, 249, 377, 321, 23, 642]
+            # for i in clean_indices:
+            #     fig, ax = plt.subplots()
+            #     ax.set(
+            #         xlabel="element",
+            #         ylabel="number of samples",
+            #         title=f"Element Distribution [CLEAN {i}]",
+            #     )
+            #     values = elementwise[i]
+
+            #     # draw histogram
+            #     ax.hist(
+            #         values,
+            #         bins=n_bins,
+            #         color="cornflowerblue",
+            #         label=f"min:{np.min(values):.4f}, idx_min:{np.argmin(values)},\n max:{np.max(values):.4f}, idx_max:{np.argmax(values)}",
+            #     )
+            #     legend = ax.legend(loc="upper right", shadow=True)
+            #     legend.get_frame()
+            #     plt.savefig(f"element_distribute_clean_{i}.png")
+            #     plt.close()
+
+            # TODO: change ends
+
+            # corrs = np.matmul(eigs, np.transpose(vision_features))  # [top_n, bs*n_view]
+            # corrs = np.abs(corrs)
+            # corrs = np.mean(corrs, axis=0)
 
             # get AUROC score
             corrs_score = corrs.reshape(num_views, -1)  # [n_views, bs]
             # corrs_score = torch.mean(torch.tensor(corrs_score), dim=0)  # [bs]
             corrs_score, _ = torch.max(torch.tensor(corrs_score), dim=0)  # [bs]
             score = roc_auc_score(y_true=gt, y_score=corrs_score)
+
             print(f"AUG_{aug}_SEED_{seed}, score: {score*100}")
             print("===================")
 

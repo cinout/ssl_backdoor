@@ -162,6 +162,18 @@ parser.add_argument(
     default="mean",
     help="for spectral_signature",
 )
+# TODO: add to slurm
+parser.add_argument(
+    "--use_element_selection",
+    action="store_true",
+    help="for spectral_signature",
+)
+parser.add_argument(
+    "--top_n_element",
+    type=int,
+    default=1,
+    help="for elementwisely select n channels that contribute the highest similarity to eigen vector for final score calculation",
+)
 
 # for debugging and analysis
 parser.add_argument(

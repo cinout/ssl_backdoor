@@ -9,17 +9,12 @@ from functools import partial
 import torch.nn.functional as F
 import math
 import matplotlib.pyplot as plt
+from collections import Counter
 
+x = np.array([0, 1, 1, 2, 2, 2, 1, 1, 2, 2])
+occ_count = Counter(x)
 
-with open(
-    "pred_scores_trigger_None_detector_variance_aug_crop_nviews_32_bs_8_sd_50.npy", "rb"
-) as f:
-    results = np.load(f, allow_pickle=True)  # a numpy array, not a dict
-    results = results[()]  # a dict
-
-images_sorted_ascend = sorted(results.items(), key=lambda x: x[1])
-print(images_sorted_ascend)
-
+print(occ_count)
 
 exit()
 
