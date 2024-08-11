@@ -2,10 +2,11 @@
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
-    --weights ./BLEND_alpha02/blend_attack/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
-    --train_file ../poison-generation/data/BLEND/train/alpha_0.20_rate_0.50_targeted_True_filelist.txt \
-    --batch_size 8 \
-    --num_views 32 \
+    --trigger_type HTBA_default \
+    --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
+    --batch_size 128 \
+    --num_views 64 \
     --detector InterViews \
     --interview_task variance \
     --rrc_scale_min 0.2 \

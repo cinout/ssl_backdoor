@@ -21,7 +21,7 @@
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=80G
+#SBATCH --mem=100G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -38,15 +38,17 @@ conda activate anogpt
 cd moco
 python eval_detector.py \
     --arch moco_resnet18 \
-    --trigger_type HTBA_default \
-    --weights ./HTBA_trigger_10_targeted_n02106550/0002/mocom0.999_contr1tau0.2_mlp_aug+_cos_b256_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
-    --train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
+    --trigger_type CTRL_p0.01_mag50_topeigen3_mean \
+    --weights ./CTRL_bs64_world4_poirate_0.01_mag50/CTRL_bs64_world4_poirate_0.01_mag50/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --train_file ../poison-generation/data/CTRL_0.01_mag_50/train/rate_1.00_targeted_True_filelist.txt \
     --batch_size 128 \
     --num_views 64 \
     --detector InterViews \
     --interview_task spectral_signature \
     --aug_type crop_plus_perspective \
     --ss_option max \
+    --top_eigens_n 3 \
+    --topn_eigens_choice mean \
     --seed 20 \
     
 

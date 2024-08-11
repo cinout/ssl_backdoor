@@ -154,6 +154,15 @@ parser.add_argument(
     help="for spectral_signature",
 )
 
+parser.add_argument("--top_eigens_n", type=int, default=1)
+parser.add_argument(
+    "--topn_eigens_choice",
+    type=str,
+    choices=["max", "mean"],
+    default="mean",
+    help="for spectral_signature",
+)
+
 # for debugging and analysis
 parser.add_argument(
     "--debug_print_views",

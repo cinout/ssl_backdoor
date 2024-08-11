@@ -15,12 +15,15 @@ from sklearn.metrics import roc_auc_score
 
 
 seeds = [30, 42]
+# augs = ["crop_plus_perspective"]
+# seeds = [30, 42]
 augs = ["basic_plus_rotation_rigid", "crop_plus_perspective", "perspective"]
 
 num_views = 32
 batch_size = 128
 gt = np.zeros(batch_size, dtype=np.uint)
 gt[0] = 1
+top_n = 30
 
 for aug in augs:
     for seed in seeds:
@@ -37,7 +40,9 @@ for aug in augs:
             vision_features = results["vision_features"]
             bs, channel = vision_features.shape
 
+            """
             #### [analysis: data preparation]
+            """
             if len(full_trigger_global_indices) > 0:
                 full_trigger_features = vision_features[
                     np.array(full_trigger_global_indices)
@@ -77,18 +82,20 @@ for aug in augs:
             clean_features_std = np.std(clean_features, axis=0)  # [512]
 
             vision_features_mean = np.mean(vision_features, axis=0)
+            """
             #### [END OF analysis: data preparation]
+            """
 
-            # #### [ANALYSIS: shift in mean]
-            shift_in_mean_l1 = np.linalg.norm(
-                vision_features_mean - clean_features_mean, ord=1
-            )
-            shift_in_mean_l2 = np.linalg.norm(
-                vision_features_mean - clean_features_mean
-            )
-            print(f"shift_in_mean L1: {shift_in_mean_l1}")
-            print(f"shift_in_mean L2: {shift_in_mean_l2}")
-            # #### [END OF ANALYSIS: shift in mean]
+            # # #### [ANALYSIS: shift in mean]
+            # shift_in_mean_l1 = np.linalg.norm(
+            #     vision_features_mean - clean_features_mean, ord=1
+            # )
+            # shift_in_mean_l2 = np.linalg.norm(
+            #     vision_features_mean - clean_features_mean
+            # )
+            # print(f"shift_in_mean L1: {shift_in_mean_l1}")
+            # print(f"shift_in_mean L2: {shift_in_mean_l2}")
+            # # #### [END OF ANALYSIS: shift in mean]
 
             # ### [ANALYSIS: in bound or not?]
             # lower_bound_1std = clean_features_mean - clean_features_std
@@ -132,20 +139,19 @@ for aug in augs:
 
             # centered
             full_mean = np.mean(vision_features, axis=0, keepdims=True)
+
             # get top eigenvector
             u, s, v = np.linalg.svd(vision_features - full_mean, full_matrices=False)
-            eigs = v[0:1]  # [1, 512]
 
-            # get similarity
-            corrs = np.matmul(eigs, np.transpose(vision_features))  # [1, bs*n_view]
-            corrs = np.linalg.norm(
-                corrs, axis=0
-            )  # make positive, and flatten to [bs*n_view]
-            # corrs = corrs.flatten()
+            eigs = v[0:top_n]
+            corrs = np.matmul(eigs, np.transpose(vision_features))  # [top_n, bs*n_view]
+            corrs = np.abs(corrs)
+            corrs = np.mean(corrs, axis=0)
 
             # get AUROC score
             corrs_score = corrs.reshape(num_views, -1)  # [n_views, bs]
-            corrs_score = torch.mean(torch.tensor(corrs_score), dim=0)  # [bs]
+            # corrs_score = torch.mean(torch.tensor(corrs_score), dim=0)  # [bs]
+            corrs_score, _ = torch.max(torch.tensor(corrs_score), dim=0)  # [bs]
             score = roc_auc_score(y_true=gt, y_score=corrs_score)
             print(f"AUG_{aug}_SEED_{seed}, score: {score*100}")
             print("===================")
@@ -155,6 +161,7 @@ for aug in augs:
             # corrs = np.concatenate(
             #     (corrs, np.zeros_like(corrs)), axis=1
             # )  # [bs*n_view, 2]
+            continue
 
             tsne = TSNE(
                 n_components=2,

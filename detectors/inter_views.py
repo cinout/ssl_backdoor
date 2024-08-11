@@ -28,7 +28,9 @@ def lid_mle(data, reference, k=20, compute_mode="use_mm_for_euclid_dist_if_neces
     return lids
 
 
-def get_ss_score(full_cov, use_centered_cov=False, debug_print_views=False):
+def get_ss_score(
+    full_cov, debug_print_views=False, top_eigens_n=1, topn_eigens_choice="mean"
+):
     # full_cov: [bs*n_view, 512]
     """
     https://github.com/MadryLab/backdoor_data_poisoning/blob/master/compute_corr.py
@@ -36,16 +38,17 @@ def get_ss_score(full_cov, use_centered_cov=False, debug_print_views=False):
     full_mean = np.mean(full_cov, axis=0, keepdims=True)
     centered_cov = full_cov - full_mean
     u, s, v = np.linalg.svd(centered_cov, full_matrices=False)
-    eigs = v[0:1]  # [1, 512]
 
-    # matmul (n,k),(k,m)->(n,m) on the last two dims
-    if use_centered_cov:
-        corrs = np.matmul(eigs, np.transpose(centered_cov))
-    else:
-        corrs = np.matmul(eigs, np.transpose(full_cov))
+    eigs = v[0:top_eigens_n]
+    corrs = np.matmul(eigs, np.transpose(full_cov))  # [top_n, bs*n_view]
+    corrs = np.abs(corrs)
 
-    scores = np.linalg.norm(corrs, axis=0)  # 2-norm by default
-    return scores
+    if topn_eigens_choice == "mean":
+        corrs = np.mean(corrs, axis=0)
+    elif topn_eigens_choice == "max":
+        corrs = np.max(corrs, axis=0)
+
+    return corrs
 
 
 def effective_rank(z):
@@ -70,6 +73,9 @@ class InterViews(nn.Module):
         self.aug_type = args.aug_type
         self.top_quantile = args.top_quantile
         self.ss_option = args.ss_option
+
+        self.top_eigens_n = args.top_eigens_n
+        self.topn_eigens_choice = args.topn_eigens_choice
 
     def forward(self, model, images, gt=None):
         if self.debug_print_views:
@@ -325,8 +331,9 @@ class InterViews(nn.Module):
         elif self.interview_task == "spectral_signature":
             ss_scores = get_ss_score(
                 vision_features.detach().cpu().numpy(),
-                use_centered_cov=self.use_centered_cov,
                 debug_print_views=self.debug_print_views,
+                top_eigens_n=self.top_eigens_n,
+                topn_eigens_choice=self.topn_eigens_choice,
             )
             ss_scores = ss_scores.reshape(self.num_views, -1)  # [n_views, bs]
             if self.ss_option == "mean":
