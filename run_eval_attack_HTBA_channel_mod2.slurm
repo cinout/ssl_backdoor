@@ -9,12 +9,11 @@
 
 #SBATCH --partition=deeplearn
 #SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+#SBATCH --constraint=dlg5|dlg6
 
-#SBATCH --job-name="det_eval"
+#SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-02:30:00
-
+#SBATCH --time=1-20:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -22,7 +21,7 @@
 
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=60G
+#SBATCH --mem=100G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -39,11 +38,15 @@ conda activate anogpt
 cd moco
 python eval_linear.py \
     --arch moco_resnet18 \
-    --weights ./HTBA_VAR_0.9/HTBA_VAR_0.9/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --weights ./HTBA_bs64_world4/HTBA_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --train_file ../dataset/imagenet100_train_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/val_poisoned/loc_random_loc-min_0.10_loc-max_0.90_alpha_0.00_width_50_filelist.txt \
-    --resume ./HTBA_VAR_0.9/HTBA_VAR_0.9/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
+    --resume ./HTBA_bs64_world4/HTBA_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear_trigger_channel_2/checkpoint_0199.pth.tar/checkpoint.pth.tar \
+    --detect_trigger_channels \
+    --channel_num 2 \
+    --num_views 64 \
+    --batch-size 128 \
     --evaluate \
     --load_cache \
 
