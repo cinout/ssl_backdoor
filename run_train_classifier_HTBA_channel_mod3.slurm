@@ -9,7 +9,7 @@
 
 #SBATCH --partition=deeplearn
 #SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+#SBATCH --constraint=dlg5
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
