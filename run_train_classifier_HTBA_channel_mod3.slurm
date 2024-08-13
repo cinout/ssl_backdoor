@@ -35,7 +35,7 @@ module purge
 eval "$(conda shell.bash hook)"
 conda activate anogpt
 
-# TODO: folder should not be "linear"
+
 
 cd moco
 python eval_linear.py \

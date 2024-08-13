@@ -147,7 +147,7 @@ for aug in augs:
             eigs = v[0:top_n]  # [top_n, C], vision_features.shape: [bs*n_view, C]
 
             """
-            # TODO: change from here
+            # change from here
             """
             eig_for_indexing = eigs[0:1]  # [1, C]
 
@@ -218,7 +218,7 @@ for aug in augs:
             #     plt.savefig(f"element_distribute_clean_{i}.png")
             #     plt.close()
 
-            # TODO: change ends
+            # change ends
 
             # corrs = np.matmul(eigs, np.transpose(vision_features))  # [top_n, bs*n_view]
             # corrs = np.abs(corrs)

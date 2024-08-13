@@ -162,7 +162,6 @@ parser.add_argument(
     default="mean",
     help="for spectral_signature",
 )
-# TODO: add to slurm
 parser.add_argument(
     "--use_element_selection",
     action="store_true",
