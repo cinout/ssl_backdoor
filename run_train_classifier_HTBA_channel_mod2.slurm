@@ -46,7 +46,7 @@ python eval_linear.py \
     --detect_trigger_channels \
     --channel_num 2 \
     --num_views 64 \
-    --batch_size 128 \
+    --batch-size 128 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
