@@ -11,7 +11,7 @@
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-06:30:00
+#SBATCH --time=0-09:30:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -44,6 +44,7 @@ python eval_linear.py \
     --detect_trigger_channels \
     --channel_num 3 \
     --num_views 64 \
+    --batch_size 128 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
