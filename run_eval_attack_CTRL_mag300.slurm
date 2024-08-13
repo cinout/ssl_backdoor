@@ -9,11 +9,11 @@
 
 #SBATCH --partition=deeplearn
 #SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="det_eval"
+#SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-02:30:00
+#SBATCH --time=0-01:00:00
 
 
 #SBATCH --nodes=1
@@ -39,11 +39,10 @@ conda activate anogpt
 cd moco
 python eval_linear.py \
     --arch moco_resnet18 \
-    --weights ./CTRL_bs64_world4_poirate_0.01/CTRL_bs64_world4_poirate_0.01/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --weights ./CTRL_bs64_world4_poirate_0.01_mag300/CTRL_bs64_world4_poirate_0.01_mag300/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
+    --resume ./CTRL_bs64_world4_poirate_0.01_mag300/CTRL_bs64_world4_poirate_0.01_mag300/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
-    --train_file ../dataset/imagenet100_train_clean_filelist.txt \
-    --val_poisoned_file ../poison-generation/data/CTRL_0.01/val_poisoned/filelist.txt \
-    --resume ./CTRL_bs64_world4_poirate_0.01/CTRL_bs64_world4_poirate_0.01/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
+    --val_poisoned_file ../poison-generation/data/CTRL_0.01_mag_300/val_poisoned/filelist.txt \
     --evaluate \
     --load_cache \
 
