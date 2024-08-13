@@ -612,6 +612,7 @@ def find_trigger_channels(views, backbone, channel_num):
     essential_indices = torch.tensor(
         [idx for (idx, occ_count) in occ_count.most_common(channel_num)]
     )
+    print(f"essential_indices: {essential_indices}")
     return essential_indices
 
 
