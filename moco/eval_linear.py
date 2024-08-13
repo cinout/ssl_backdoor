@@ -396,7 +396,9 @@ def main_worker(args):
     print("Calculating features")
     if args.evaluate:
         # cached mean and variance (evaluation mode)
-        cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.resume)
+        cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(
+            os.path.dirname(args.resume)
+        )
     else:
         # train mode
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.save)
