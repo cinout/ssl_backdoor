@@ -1,6 +1,8 @@
 #!/bin/bash
 
-#SBATCH --partition=gpu-a100
+###SBATCH --partition=gpu-a100
+
+#SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
@@ -11,7 +13,7 @@
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-09:30:00
+#SBATCH --time=0-04:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
