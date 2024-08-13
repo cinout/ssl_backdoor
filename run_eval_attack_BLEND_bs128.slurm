@@ -9,12 +9,11 @@
 
 #SBATCH --partition=deeplearn
 #SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="det_eval"
+#SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=0-02:30:00
-
+#SBATCH --time=0-01:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -41,7 +40,6 @@ python eval_linear.py \
     --arch moco_resnet18 \
     --weights ./BLEND_bs128_world4/BLEND_bs128_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b128_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
-    --train_file ../dataset/imagenet100_train_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/BLEND/val_poisoned/alpha_0.20_filelist.txt \
     --resume ./BLEND_bs128_world4/BLEND_bs128_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b128_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
     --evaluate \
