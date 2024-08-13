@@ -22,6 +22,7 @@
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --mem=100G
+#SBATCH --dependency=afterok:64048690
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400

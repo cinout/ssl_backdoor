@@ -17,5 +17,5 @@ a = torch.randn((10, 10))
 b = torch.tensor([2, 5, 3])
 a[:, b] = 0.0
 print("start waiting")
-time.sleep(90)
+time.sleep(50)
 print(a)
