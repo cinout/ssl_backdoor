@@ -44,7 +44,7 @@ python eval_linear.py \
     --train_file ../dataset/imagenet100_train_clean_filelist_0.01_balanced_sd20.txt \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --detect_trigger_channels \
-    --channel_num 3 \
+    --channel_num 5 \
     --num_views 64 \
     --batch-size 128 \
 
