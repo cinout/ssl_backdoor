@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
-#SBATCH --time=1-20:00:00
+#SBATCH --time=0-00:10:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -22,7 +22,6 @@
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --mem=100G
-#SBATCH --dependency=afterok:64046826
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400

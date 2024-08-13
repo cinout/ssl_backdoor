@@ -400,6 +400,10 @@ def main_worker(args):
     else:
         # train mode
         cached_feats = "%s/var_mean.pth.tar" % os.path.dirname(args.save)
+    print(f"cached_feats: {cached_feats}")
+    print(f"args.load_cache: {args.load_cache}")
+    print(f"os.path.exists(cached_feats): {os.path.exists(cached_feats)}")
+    exit()
     if args.load_cache and os.path.exists(cached_feats):
         # used in evaluate mode
         logger.info("load train feats from cache =>")
