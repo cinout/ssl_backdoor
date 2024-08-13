@@ -4,6 +4,7 @@ import random
 import shutil
 import time
 import warnings
+from collections import Counter
 
 import torch
 import torch.nn as nn
@@ -28,6 +29,7 @@ from eval_utils import (
 from PIL import Image
 import numpy as np
 from moco.dataset import FileListDataset
+import moco.loader
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -148,6 +150,32 @@ parser.add_argument(
 )
 parser.add_argument("--eval_data", type=str, default="", help="eval identifier")
 
+# new experiments (for finding trigger channels)
+parser.add_argument(
+    "--detect_trigger_channels",
+    action="store_true",
+    help="use spectral signature to detect channels",
+)
+parser.add_argument(
+    "--channel_num", default=1, type=int, help="number of channels to set to 0"
+)
+parser.add_argument(
+    "--num_views",
+    type=int,
+    default=64,
+    help="how many views are generated for each image, for NeighborVariation detector",
+)
+parser.add_argument(
+    "--rrc_scale_min",
+    type=float,
+    default=0.3,
+)
+parser.add_argument(
+    "--rrc_scale_max",
+    type=float,
+    default=0.95,
+)
+
 
 best_acc1 = 0
 
@@ -165,7 +193,13 @@ def main():
 
         # this is where we create the "linear" folder
         args.save = os.path.join(
-            os.path.dirname(args.weights), "linear", os.path.basename(args.weights)
+            os.path.dirname(args.weights),
+            (
+                f"linear_trigger_channel_{args.channel_num}"
+                if args.detect_trigger_channels
+                else "linear"
+            ),
+            os.path.basename(args.weights),
         )
         os.makedirs(args.save, exist_ok=True)
     logger = get_logger(
@@ -236,6 +270,10 @@ def get_model(arch, wts_path):
 def main_worker(args):
     global best_acc1
 
+    """
+    SETUP: dataloaders
+    """
+
     # Data loading code
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -259,11 +297,30 @@ def main_worker(args):
         ]
     )
 
+    # for spectral signature
+    if args.detect_trigger_channels:
+        aug_and_transform = [
+            transforms.RandomResizedCrop(
+                224, scale=(args.rrc_scale_min, args.rrc_scale_max), ratio=(0.2, 5)
+            ),
+            transforms.RandomPerspective(p=0.5),
+            transforms.ToTensor(),
+            normalize,
+        ]
+        ss_transform = moco.loader.NCropsTransform(
+            transforms.Compose(aug_and_transform), args.num_views
+        )
+
     if not args.evaluate:
         # TRAIN MODE
 
         # FIXME [DONE]: read train images (clean, 1% pr 10%)
-        train_dataset = FileListDataset(args.train_file, train_transform)
+        train_dataset = FileListDataset(
+            args.train_file,
+            train_transform,
+            ss_transform if args.detect_trigger_channels else None,
+        )
+
         train_loader = DataLoader(
             train_dataset,
             batch_size=args.batch_size,
@@ -272,7 +329,7 @@ def main_worker(args):
             pin_memory=True,
         )
 
-        # FIXME [DONE]: read val images (no poison), for finding optimal training model
+        # FIXME [DONE]: read val images (no poison), for finding OPTIMAL training model
         val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.val_file, val_transform),
             batch_size=args.batch_size,
@@ -292,8 +349,7 @@ def main_worker(args):
 
     if args.evaluate:
         # EVAL MODE
-
-        # what's the purpose of this? -- get mean and std (clean, whole)
+        # what's the purpose of this? -- get mean and std (clean, whole), usually not used in EVAL mode
         train_val_loader = torch.utils.data.DataLoader(
             FileListDataset(args.train_file, val_transform),
             batch_size=args.batch_size,
@@ -304,7 +360,11 @@ def main_worker(args):
 
         # clean val
         val_loader = torch.utils.data.DataLoader(
-            FileListDataset(args.val_file, val_transform),
+            FileListDataset(
+                args.val_file,
+                val_transform,
+                ss_transform if args.detect_trigger_channels else None,
+            ),
             batch_size=args.batch_size,
             shuffle=False,
             num_workers=args.workers,
@@ -316,12 +376,17 @@ def main_worker(args):
             FileListDataset(
                 args.val_poisoned_file,
                 transforms.Compose([transforms.ToTensor(), normalize]),
+                ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
             shuffle=False,
             num_workers=args.workers,
             pin_memory=True,
         )
+
+    """
+    SETUP: backbone model (Resnet)
+    """
 
     backbone = get_model(args.arch, args.weights)
     if device == "cuda":
@@ -347,6 +412,9 @@ def main_worker(args):
         torch.save((train_var, train_mean), cached_feats)
     print("-- finish with Calculating features")
 
+    """
+    SETUP: linear model
+    """
     linear = nn.Sequential(
         Normalize(),  # L2 norm
         FullBatchNorm(
@@ -385,6 +453,10 @@ def main_worker(args):
             logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
+
+    """
+    EVALUATION MODE
+    """
 
     if args.evaluate:
         # load imagenet metadata
@@ -449,6 +521,9 @@ def main_worker(args):
         # exit after evaluation is done
         return
 
+    """
+    TRAINING MODE
+    """
     # arrive here only if args.evaluate is False
     for epoch in range(args.start_epoch, args.epochs):
         # train for one epoch
@@ -515,6 +590,31 @@ def get_channels(arch):
     return c
 
 
+def find_trigger_channels(views, backbone, channel_num):
+    views = torch.cat(views, dim=0)
+    views = views.to(device)
+    vision_features = backbone(views)  # [bs*n_views, 512]
+    _, c = vision_features.shape
+    vision_features = vision_features.detach().cpu().numpy()
+    u, s, v = np.linalg.svd(
+        vision_features - np.mean(vision_features, axis=0, keepdims=True),
+        full_matrices=False,
+    )
+    eig_for_indexing = v[0:1]  # [1, C]
+    corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
+    coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+    coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+    elementwise = (
+        eig_for_indexing * vision_features * coeff_adjust
+    )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+    max_indices = np.argmax(elementwise, axis=1)
+    occ_count = Counter(max_indices)
+    essential_indices = torch.tensor(
+        [idx for (idx, occ_count) in occ_count.most_common(channel_num)]
+    )
+    return essential_indices
+
+
 def train(train_loader, backbone, linear, optimizer, epoch, args):
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
@@ -532,16 +632,33 @@ def train(train_loader, backbone, linear, optimizer, epoch, args):
     linear.train()
 
     end = time.time()
-    for i, (_, images, target, _) in enumerate(train_loader):
+    for i, content in enumerate(train_loader):
+
+        if args.detect_trigger_channels:
+            (_, images, views, target, _) = content
+        else:
+            (_, images, target, _) = content
+
         # measure data loading time
         data_time.update(time.time() - end)
 
-        images = images.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
+        images = images.to(device)
+        target = target.to(device)
+        # images = images.cuda(non_blocking=True)
+        # target = target.cuda(non_blocking=True)
 
         # compute output
         with torch.no_grad():
             output = backbone(images)
+
+            if args.detect_trigger_channels:
+                # FIND channels that are related to trigger (although in training, all images are clean)
+                essential_indices = find_trigger_channels(
+                    views, backbone, args.channel_num
+                )
+                # set vallues to 0 at these indices
+                output[:, essential_indices] = 0.0
+
         output = linear(output)
         loss = F.cross_entropy(output, target)
 
@@ -628,12 +745,25 @@ def validate_conf_matrix(val_loader, backbone, linear, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (_, images, target, _) in enumerate(val_loader):
+        for i, content in enumerate(val_loader):
+            if args.detect_trigger_channels:
+                (_, images, views, target, _) = content
+            else:
+                (_, images, target, _) = content
+
             images = images.to(device)
             target = target.to(device)  # shape:[bs], value: GT class index 0-99
 
             # compute output
             output = backbone(images)
+            if args.detect_trigger_channels:
+                # FIND channels that are related to trigger (although in training, all images are clean)
+                essential_indices = find_trigger_channels(
+                    views, backbone, args.channel_num
+                )
+                # set vallues to 0 at these indices
+                output[:, essential_indices] = 0.0
+
             output = linear(
                 output
             )  # shape:[bs, 100==#classes], value: probablity of each class

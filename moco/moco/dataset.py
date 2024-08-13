@@ -5,22 +5,28 @@ import torchvision.transforms as transforms
 
 
 class FileListDataset(data.Dataset):
-    def __init__(self, path_to_txt_file, transform):
+    def __init__(self, path_to_txt_file, transform, ss_transform=None):
         with open(path_to_txt_file, "r") as f:
             self.file_list = f.readlines()
             self.file_list = [row.rstrip() for row in self.file_list]
 
         self.transform = transform
+        self.ss_transform = ss_transform
 
     def __getitem__(self, idx):
         image_path = self.file_list[idx].split()[0]
         img = Image.open(image_path).convert("RGB")
         target = int(self.file_list[idx].split()[1])
 
-        if self.transform is not None:
-
+        if self.ss_transform is not None:
+            # called if detect_trigger_channels is set True
             images = self.transform(img)
-            return image_path, images, target, idx
+            views = self.ss_transform(img)
+            return image_path, images, views, target, idx
+        else:
+            if self.transform is not None:
+                images = self.transform(img)
+                return image_path, images, target, idx
 
     def __len__(self):
         return len(self.file_list)

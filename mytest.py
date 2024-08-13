@@ -11,10 +11,10 @@ import math
 import matplotlib.pyplot as plt
 from collections import Counter
 
-x = np.array([0, 1, 1, 2, 2, 2, 1, 1, 2, 2])
-occ_count = Counter(x)
-
-print(occ_count)
+a = torch.randn((10, 10))
+b = torch.tensor([2, 5, 3])
+a[:, b] = 0.0
+print(a)
 
 exit()
 
