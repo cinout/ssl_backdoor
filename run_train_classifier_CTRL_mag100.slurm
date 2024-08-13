@@ -7,7 +7,7 @@
 
 #SBATCH --partition=deeplearn
 #SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
 #SBATCH --job-name="mocov2"
 #SBATCH --account=punim1623
@@ -37,7 +37,7 @@ cd moco
 python eval_linear.py \
     --arch moco_resnet18 \
     --weights ./CTRL_bs64_world4_poirate_0.01_mag100/CTRL_bs64_world4_poirate_0.01_mag100/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
-    --train_file ../dataset/imagenet100_train_clean_filelist_0.01_sd42.txt \
+    --train_file ../dataset/imagenet100_train_clean_filelist_0.01_balanced_sd20.txt \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
 
 ##Log this job's resource usage stats###
