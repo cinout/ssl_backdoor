@@ -12,7 +12,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=40G
 
-#SBATCH --dependency=afterok:
+#SBATCH --dependency=afterok:64050727
 
 ### SBATCH --mail-user=haitianh@student.unimelb.edu.au
 ### SBATCH --mail-type=BEGIN
