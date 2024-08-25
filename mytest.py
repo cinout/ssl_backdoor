@@ -12,10 +12,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import time
 
-
-a = torch.randn((10, 10))
-b = torch.tensor([2, 5, 3])
-a[:, b] = 0.0
-print("start waiting")
-time.sleep(50)
-print(a)
+target_class = 26
+labels = torch.tensor([2, 5, 6])
+labels = torch.ones_like(labels) * target_class
+print(labels)

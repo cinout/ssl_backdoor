@@ -346,6 +346,9 @@ def test_maskprune(args, model, linear, criterion, data_loader, val_mode):
                 images = images[valid_indices]
                 labels = labels[valid_indices]
 
+                # update labels
+                labels = torch.ones_like(labels) * args.target_class
+
             output = model(images)
             output = linear(output)
 
@@ -357,6 +360,7 @@ def test_maskprune(args, model, linear, criterion, data_loader, val_mode):
             # pred.shape: [bs, k=1]
             pred = pred.squeeze(1)  # shape: [bs, ]
             total_count += labels.shape[0]
+
             total_correct += (pred == labels).float().sum().item()
 
     loss = total_loss / len(data_loader)
