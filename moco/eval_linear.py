@@ -888,12 +888,12 @@ def main_worker(args):
         if args.use_mask_pruning:
             # use mask pruning
 
-            backbone = copy.deepcopy(backbone)
-            linear = copy.deepcopy(linear)
+            backbone_copy = copy.deepcopy(backbone)
+            linear_copy = copy.deepcopy(linear)
 
             criterion = torch.nn.CrossEntropyLoss().to(device)
             optimizer = torch.optim.SGD(
-                list(backbone.parameters()) + list(linear.parameters()),
+                list(backbone_copy.parameters()) + list(linear_copy.parameters()),
                 lr=args.unlearning_lr,
                 momentum=0.9,
                 weight_decay=5e-4,
@@ -908,8 +908,8 @@ def main_worker(args):
                 # UNLEARNING
                 train_acc = train_step_unlearning(
                     args=args,
-                    model=backbone,
-                    linear=linear,
+                    model=backbone_copy,
+                    linear=linear_copy,
                     criterion=criterion,
                     optimizer=optimizer,
                     data_loader=train_loader,
@@ -933,7 +933,7 @@ def main_worker(args):
             unlearned_model.fc = nn.Sequential()
 
             refill_unlearned_model(
-                unlearned_model, orig_state_dict=backbone.state_dict()
+                unlearned_model, orig_state_dict=backbone_copy.state_dict()
             )
 
             unlearned_model = unlearned_model.to(device)
@@ -951,7 +951,7 @@ def main_worker(args):
                 train_step_recovering(
                     args=args,
                     unlearned_model=unlearned_model,
-                    linear=linear,
+                    linear=linear_copy,
                     criterion=criterion,
                     data_loader=train_loader,
                     mask_opt=mask_optimizer,
@@ -962,13 +962,18 @@ def main_worker(args):
                 os.path.join(args.save, "mask_values.txt"),
             )
 
-            del unlearned_model, backbone
+            # TODO: new backbone
+            del unlearned_model, backbone_copy, linear_copy
 
             #### stage 3: model pruning
-            print(f">>>>>>>> start model pruning")
             # read poisoned model again!
-            backbone = copy.deepcopy(backbone)
-            linear = copy.deepcopy(linear)
+
+            print(f">>>>>>>> start model pruning")
+            backbone_copy = get_model(args.arch, args.weights)
+            backbone_copy = backbone_copy.to(device)
+            backbone_copy.eval()
+
+            linear_copy = copy.deepcopy(linear)
 
             criterion = torch.nn.CrossEntropyLoss().to(device)
             mask_file = os.path.join(args.save, "mask_values.txt")
@@ -977,16 +982,16 @@ def main_worker(args):
             print("No. \t Layer Name \t Neuron Idx \t Mask \t PoisonACC \t CleanACC")
             cl_loss, cl_acc = test_maskprune(
                 args=args,
-                model=backbone,
-                linear=linear,
+                model=backbone_copy,
+                linear=linear_copy,
                 criterion=criterion,
                 data_loader=val_loader,
                 val_mode="clean",
             )
             po_loss, po_acc = test_maskprune(
                 args=args,
-                model=backbone,
-                linear=linear,
+                model=backbone_copy,
+                linear=linear_copy,
                 criterion=criterion,
                 data_loader=val_poisoned_loader,
                 val_mode="poison",
@@ -1003,8 +1008,8 @@ def main_worker(args):
             if args.pruning_by == "threshold":
                 evaluate_by_threshold(
                     args,
-                    backbone,
-                    linear,
+                    backbone_copy,
+                    linear_copy,
                     mask_values,
                     pruning_max=args.pruning_max,
                     pruning_step=args.pruning_step,
