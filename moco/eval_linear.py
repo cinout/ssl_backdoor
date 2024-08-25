@@ -157,8 +157,12 @@ parser.add_argument(
     help="use spectral signature to detect channels",
 )
 parser.add_argument(
-    "--channel_num", default=1, type=int, help="number of channels to set to 0"
+    "--channel_num",
+    nargs="+",
+    type=int,
+    help="a new hp, determine k channels of EACH SAMPLE",
 )
+
 parser.add_argument(
     "--num_views",
     type=int,
@@ -180,6 +184,76 @@ parser.add_argument(
 best_acc1 = 0
 
 
+def generate_evalaution_results(
+    args,
+    val_loader,
+    val_poisoned_loader,
+    backbone,
+    linear,
+    imagenet_metadata_dict,
+    class_dir_list,
+    k=0,
+):
+    acc1, _, conf_matrix_clean = validate_conf_matrix(
+        val_loader, backbone, linear, args, k
+    )
+    acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
+        val_poisoned_loader, backbone, linear, args, k
+    )
+
+    if args.detect_trigger_channels:
+        np.save(
+            "{}/conf_matrix_clean_rmtriggerchannel_{}.npy".format(args.save, k),
+            conf_matrix_clean,
+        )
+        np.save(
+            "{}/conf_matrix_poisoned_rmtriggerchannel_{}.npy".format(args.save, k),
+            conf_matrix_poisoned,
+        )
+    else:
+        np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
+        np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
+
+    csv_name = (
+        "{}/conf_matrix_rmtriggerchannel_{}.csv".format(args.save, k)
+        if args.detect_trigger_channels
+        else "{}/conf_matrix.csv".format(args.save)
+    )
+    with open(csv_name, "w") as f:
+        f.write(
+            "Model {},,Clean val,,,,Pois. val,,\n".format(
+                os.path.join(
+                    os.path.dirname(args.weights).split("/")[-3],
+                    os.path.dirname(args.weights).split("/")[-2],
+                    os.path.dirname(args.weights).split("/")[-1],
+                    os.path.basename(args.weights),
+                ).replace(",", ";")
+            )
+        )
+        f.write("Data {},,acc1,,,,acc1,,\n".format(args.val_poisoned_file))
+        f.write(",,{:.2f},,,,{:.2f},,\n".format(acc1, acc1_p))
+        f.write("class name,class id,TP,FP,,TP,FP\n")
+        for target in range(100):
+            # for target in range(1000):                # for ImageNet
+            f.write(
+                "{},{},{},{},,".format(
+                    imagenet_metadata_dict[class_dir_list[target]].replace(",", ";"),
+                    target,
+                    conf_matrix_clean[target][target],
+                    conf_matrix_clean[:, target].sum()
+                    - conf_matrix_clean[target][target],
+                )  # I guess in the matrix, row must be GT, col is PRED
+            )
+            f.write(
+                "{},{}\n".format(
+                    conf_matrix_poisoned[target][target],
+                    conf_matrix_poisoned[:, target].sum()
+                    - conf_matrix_poisoned[target][target],
+                )
+            )
+    pass
+
+
 def main():
     global logger
 
@@ -194,13 +268,18 @@ def main():
         # this is where we create the "linear" folder
         args.save = os.path.join(
             os.path.dirname(args.weights),
-            (
-                f"linear_trigger_channel_{args.channel_num}"
-                if args.detect_trigger_channels
-                else "linear"
-            ),
+            "linear",
             os.path.basename(args.weights),
         )
+        # args.save = os.path.join(
+        #     os.path.dirname(args.weights),
+        #     (
+        #         f"linear_trigger_channel_{args.channel_num}"
+        #         if args.detect_trigger_channels
+        #         else "linear"
+        #     ),
+        #     os.path.basename(args.weights),
+        # )
         os.makedirs(args.save, exist_ok=True)
     logger = get_logger(
         logpath=os.path.join(args.save, "logs"), filepath=os.path.abspath(__file__)
@@ -459,7 +538,6 @@ def main_worker(args):
     """
     EVALUATION MODE
     """
-
     if args.evaluate:
         # load imagenet metadata
         with open("imagenet_metadata.txt", "r") as f:
@@ -475,50 +553,28 @@ def main_worker(args):
             class_dir_list = sorted(class_dir_list)  # idx -> n01xxx
         # class_dir_list = sorted(os.listdir('/datasets/imagenet/train'))               # for ImageNet
 
-        acc1, _, conf_matrix_clean = validate_conf_matrix(
-            val_loader, backbone, linear, args
-        )
-        acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
-            val_poisoned_loader, backbone, linear, args
-        )
-
-        np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
-        np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
-
-        with open("{}/conf_matrix.csv".format(args.save), "w") as f:
-            f.write(
-                "Model {},,Clean val,,,,Pois. val,,\n".format(
-                    os.path.join(
-                        os.path.dirname(args.weights).split("/")[-3],
-                        os.path.dirname(args.weights).split("/")[-2],
-                        os.path.dirname(args.weights).split("/")[-1],
-                        os.path.basename(args.weights),
-                    ).replace(",", ";")
+        if args.detect_trigger_channels:
+            for k in args.channel_num:
+                generate_evalaution_results(
+                    args,
+                    val_loader,
+                    val_poisoned_loader,
+                    backbone,
+                    linear,
+                    imagenet_metadata_dict,
+                    class_dir_list,
+                    k=k,
                 )
+        else:
+            generate_evalaution_results(
+                args,
+                val_loader,
+                val_poisoned_loader,
+                backbone,
+                linear,
+                imagenet_metadata_dict,
+                class_dir_list,
             )
-            f.write("Data {},,acc1,,,,acc1,,\n".format(args.val_poisoned_file))
-            f.write(",,{:.2f},,,,{:.2f},,\n".format(acc1, acc1_p))
-            f.write("class name,class id,TP,FP,,TP,FP\n")
-            for target in range(100):
-                # for target in range(1000):                # for ImageNet
-                f.write(
-                    "{},{},{},{},,".format(
-                        imagenet_metadata_dict[class_dir_list[target]].replace(
-                            ",", ";"
-                        ),
-                        target,
-                        conf_matrix_clean[target][target],
-                        conf_matrix_clean[:, target].sum()
-                        - conf_matrix_clean[target][target],
-                    )  # I guess in the matrix, row must be GT, col is PRED
-                )
-                f.write(
-                    "{},{}\n".format(
-                        conf_matrix_poisoned[target][target],
-                        conf_matrix_poisoned[:, target].sum()
-                        - conf_matrix_poisoned[target][target],
-                    )
-                )
 
         # exit after evaluation is done
         return
@@ -596,7 +652,7 @@ def find_trigger_channels(views, backbone, channel_num):
     views = torch.cat(views, dim=0)
     views = views.to(device)
     vision_features = backbone(views)  # [bs*n_views, 512]
-    _, c = vision_features.shape
+    total, c = vision_features.shape
     vision_features = vision_features.detach().cpu().numpy()
     u, s, v = np.linalg.svd(
         vision_features - np.mean(vision_features, axis=0, keepdims=True),
@@ -609,12 +665,21 @@ def find_trigger_channels(views, backbone, channel_num):
     elementwise = (
         eig_for_indexing * vision_features * coeff_adjust
     )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
-    max_indices = np.argmax(elementwise, axis=1)
+
+    max_indices = np.argsort(elementwise, axis=1)
+    max_indices = max_indices[:, -channel_num:]
+    max_indices = max_indices.flatten()  # [bs*n_view*topk_channel, ]
+
+    # max_indices = np.argmax(elementwise, axis=1)
+
     occ_count = Counter(max_indices)
+    essential_indices = occ_count.most_common(channel_num)
+    print(
+        f"essential_indices: {essential_indices}; #samples: {total}"
+    )  # print (idx, count) tuples
     essential_indices = torch.tensor(
-        [idx for (idx, occ_count) in occ_count.most_common(channel_num)]
-    )
-    print(f"essential_indices: {essential_indices}")
+        [idx for (idx, occ_count) in essential_indices]
+    )  # remove count
     return essential_indices
 
 
@@ -654,13 +719,14 @@ def train(train_loader, backbone, linear, optimizer, epoch, args):
         with torch.no_grad():
             output = backbone(images)
 
-            if args.detect_trigger_channels:
-                # FIND channels that are related to trigger (although in training, all images are clean)
-                essential_indices = find_trigger_channels(
-                    views, backbone, args.channel_num
-                )
-                # set vallues to 0 at these indices
-                output[:, essential_indices] = 0.0
+            ##### WE DON:T need this during training
+            # if args.detect_trigger_channels:
+            #     # FIND channels that are related to trigger (although in training, all images are clean)
+            #     essential_indices = find_trigger_channels(
+            #         views, backbone, args.channel_num
+            #     )
+            #     # set vallues to 0 at these indices
+            #     output[:, essential_indices] = 0.0
 
         output = linear(output)
         loss = F.cross_entropy(output, target)
@@ -730,7 +796,7 @@ def validate(val_loader, backbone, linear, args):
 
 
 # used in eval mode, for generate output scores
-def validate_conf_matrix(val_loader, backbone, linear, args):
+def validate_conf_matrix(val_loader, backbone, linear, args, channel_num=0):
     batch_time = AverageMeter("Time", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
@@ -761,9 +827,7 @@ def validate_conf_matrix(val_loader, backbone, linear, args):
             output = backbone(images)
             if args.detect_trigger_channels:
                 # FIND channels that are related to trigger (although in training, all images are clean)
-                essential_indices = find_trigger_channels(
-                    views, backbone, args.channel_num
-                )
+                essential_indices = find_trigger_channels(views, backbone, channel_num)
                 # set vallues to 0 at these indices
                 output[:, essential_indices] = 0.0
 
