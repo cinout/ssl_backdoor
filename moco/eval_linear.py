@@ -6,6 +6,8 @@ import time
 import warnings
 from collections import Counter, OrderedDict
 
+import sys
+sys.path.append("..")
 import pandas as pd
 import torch
 import torch.nn as nn
