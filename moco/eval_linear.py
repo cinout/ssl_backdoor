@@ -7,6 +7,7 @@ import warnings
 from collections import Counter, OrderedDict
 
 import sys
+
 sys.path.append("..")
 import pandas as pd
 import torch
@@ -926,8 +927,8 @@ def main_worker(args):
 
             #### stage 2: model recovering
             print(f">>>>>>>> start model recovering")
-            unlearned_model = models.__dict__[args.arch](
-                num_classes=512, norm_layer=MaskBatchNorm2d
+            unlearned_model = models.__dict__[args.arch.replace("moco_", "")](
+                norm_layer=MaskBatchNorm2d
             )
             unlearned_model.fc = nn.Sequential()
 
