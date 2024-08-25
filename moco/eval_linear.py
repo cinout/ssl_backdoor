@@ -201,6 +201,8 @@ def generate_evalaution_results(
         val_poisoned_loader, backbone, linear, args, k
     )
 
+    print(f">>>>>> args.save is {args.save}, k is {k}")
+
     if args.detect_trigger_channels:
         np.save(
             "{}/conf_matrix_clean_rmtriggerchannel_{}.npy".format(args.save, k),
@@ -251,7 +253,6 @@ def generate_evalaution_results(
                     - conf_matrix_poisoned[target][target],
                 )
             )
-    pass
 
 
 def main():
@@ -555,6 +556,7 @@ def main_worker(args):
 
         if args.detect_trigger_channels:
             for k in args.channel_num:
+                print(f">>>> generating results for removing top-{k} trigger channels")
                 generate_evalaution_results(
                     args,
                     val_loader,
