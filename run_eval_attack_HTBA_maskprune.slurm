@@ -47,6 +47,8 @@ python eval_linear.py \
     --use_mask_pruning \
     --target_class 26 \
     --train_file ../dataset/imagenet100_train_clean_filelist_0.01_balanced_sd20.txt \
+    --unlearning_epochs 60 \
+    --recovering_epochs 60 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
