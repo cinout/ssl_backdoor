@@ -1,11 +1,12 @@
 import argparse
 import os
-import random
+import random, copy
 import shutil
 import time
 import warnings
-from collections import Counter
+from collections import Counter, OrderedDict
 
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -30,6 +31,7 @@ from PIL import Image
 import numpy as np
 from moco.dataset import FileListDataset
 import moco.loader
+from resnet.mask_batchnorm import MaskBatchNorm2d
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -180,8 +182,295 @@ parser.add_argument(
     default=0.95,
 )
 
+# for mask pruning
+parser.add_argument(
+    "--use_mask_pruning",
+    action="store_true",
+    help="apply mask pruning (RNP paper)",
+)
+parser.add_argument("--alpha", type=float, default=0.2)
+parser.add_argument(
+    "--clean_threshold",
+    type=float,
+    default=0.20,
+    help="threshold of unlearning accuracy",
+)
+parser.add_argument(
+    "--unlearning_lr",
+    type=float,
+    default=0.01,
+    help="the learning rate for neuron unlearning",
+)
+parser.add_argument(
+    "--recovering_lr",
+    type=float,
+    default=0.2,
+    help="the learning rate for mask optimization",
+)
+parser.add_argument(
+    "--unlearning_epochs",
+    type=int,
+    default=20,
+    help="the number of epochs for unlearning",
+)
+parser.add_argument(
+    "--recovering_epochs",
+    type=int,
+    default=20,
+    help="the number of epochs for recovering",
+)
+parser.add_argument(
+    "--pruning-by", type=str, default="threshold", choices=["number", "threshold"]
+)
+parser.add_argument(
+    "--pruning-max",
+    type=float,
+    default=0.90,
+    help="the maximum number/threshold for pruning",
+)
+parser.add_argument(
+    "--pruning-step",
+    type=float,
+    default=0.05,
+    help="the step size for evaluating the pruning",
+)
+parser.add_argument(
+    "--schedule",
+    type=int,
+    nargs="+",
+    default=[10, 20],
+    help="Decrease learning rate at these epochs.",
+)
+parser.add_argument(
+    "--target_class",
+    type=int,
+    help="poisoned class",
+)
+
 
 best_acc1 = 0
+
+
+def pruning(net, neuron):
+    state_dict = net.state_dict()
+    weight_name = "{}.{}".format(neuron[0], "weight")
+    state_dict[weight_name][int(neuron[1])] = 0.0
+    net.load_state_dict(state_dict)
+
+
+# called at 3rd pruning stage
+def evaluate_by_threshold(
+    args,
+    model,
+    linear,
+    mask_values,  # sorted by [2], from low to high
+    pruning_max,  # 0.9
+    pruning_step,  # 0.05
+    criterion,
+    clean_loader,
+    poison_loader,
+):
+    model.eval()
+    linear.eval()
+
+    thresholds = np.arange(0, pruning_max + pruning_step, pruning_step)
+    start = 0  # prune from which idx in mask_values
+    for threshold in thresholds:
+        idx = start
+        for idx in range(start, len(mask_values)):
+            if float(mask_values[idx][2]) <= threshold:
+                pruning(model, mask_values[idx])
+                start += 1
+            else:
+                break
+        layer_name, neuron_idx, value = (
+            mask_values[idx][0],
+            mask_values[idx][1],
+            mask_values[idx][2],
+        )
+        cl_loss, cl_acc = test_maskprune(
+            args=args,
+            model=model,
+            linear=linear,
+            criterion=criterion,
+            data_loader=clean_loader,
+            val_mode="clean",
+        )
+        po_loss, po_acc = test_maskprune(
+            args=args,
+            model=model,
+            linear=linear,
+            criterion=criterion,
+            data_loader=poison_loader,
+            val_mode="poison",
+        )
+        print(
+            "{} \t {} \t {} \t {:.2f} \t {:.4f} \t {:.4f}".format(
+                start,
+                layer_name,
+                neuron_idx,
+                threshold,
+                # po_loss,
+                po_acc * 100,
+                # cl_loss,
+                cl_acc * 100,
+            )
+        )
+
+
+# for evaluating performances at different stages
+def test_maskprune(args, model, linear, criterion, data_loader, val_mode):
+    model.eval()
+    linear.eval()
+
+    total_correct = 0
+    total_loss = 0.0
+    total_count = 0
+    with torch.no_grad():
+        for content in data_loader:
+            if args.detect_trigger_channels:
+                (_, images, views, labels, _) = content
+            else:
+                (_, images, labels, _) = content
+
+            images, labels = images.to(device), labels.to(device)
+            if val_mode == "poison":
+                valid_indices = labels != args.target_class
+                if torch.all(~valid_indices):
+                    # all inputs are from target class, skip this iteration
+                    continue
+
+                images = images[valid_indices]
+                labels = labels[valid_indices]
+
+            output = model(images)
+            output = linear(output)
+
+            total_loss += criterion(output, labels).item()
+
+            _, pred = output.topk(
+                1, 1, True, True
+            )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
+            # pred.shape: [bs, k=1]
+            pred = pred.squeeze(1)  # shape: [bs, ]
+            total_count += labels.shape[0]
+            total_correct += (pred == labels).float().sum().item()
+
+    loss = total_loss / len(data_loader)
+    acc = float(total_correct) / total_count
+    return loss, acc
+
+
+# called at 3rd stage to read mask (use mask_values.txt as reference)
+def read_data(file_name):
+    tempt = pd.read_csv(file_name, sep="\s+", skiprows=1, header=None)
+    layer = tempt.iloc[:, 1]
+    idx = tempt.iloc[:, 2]
+    value = tempt.iloc[:, 3]
+    mask_values = list(zip(layer, idx, value))
+    return mask_values
+
+
+# called at the end of 2nd stage
+def save_mask_scores(state_dict, file_name):
+    mask_values = []
+    count = 0
+    for name, param in state_dict.items():
+        if "neuron_mask" in name:
+            for idx in range(param.size(0)):
+                neuron_name = ".".join(name.split(".")[:-1])
+                mask_values.append(
+                    "{} \t {} \t {} \t {:.4f} \n".format(
+                        count, neuron_name, idx, param[idx].item()
+                    )
+                )
+                count += 1
+    with open(file_name, "w") as f:
+        f.write("No \t Layer Name \t Neuron Idx \t Mask Score \n")
+        f.writelines(mask_values)
+
+
+def refill_unlearned_model(net, orig_state_dict):
+    new_state_dict = OrderedDict()
+    for k, v in net.state_dict().items():
+        if k in orig_state_dict.keys():
+            # print(f">>>>>> IN orig_state_dict: {k}")
+            new_state_dict[k] = orig_state_dict[k]
+        else:
+            # print(f">>>>>> OUT orig_state_dict: {k}")
+            new_state_dict[k] = v
+    net.load_state_dict(new_state_dict)
+
+
+# clip value to be witihin 0 and 1
+def clip_mask(unlearned_model, lower=0.0, upper=1.0):
+    params = [
+        param
+        for name, param in unlearned_model.named_parameters()
+        if "neuron_mask" in name
+    ]
+    with torch.no_grad():
+        for param in params:
+            param.clamp_(lower, upper)
+
+
+def train_step_recovering(
+    args, unlearned_model, linear, criterion, mask_opt, data_loader
+):
+    unlearned_model.train()
+    linear.train()
+
+    for content in data_loader:
+        _, images, labels, _ = content
+
+        images, labels = images.to(device), labels.to(device)
+
+        mask_opt.zero_grad()
+        output = unlearned_model(images)
+        output = linear(output)
+
+        loss = criterion(output, labels)
+        loss = args.alpha * loss
+
+        loss.backward()
+        mask_opt.step()
+        clip_mask(unlearned_model)
+
+
+def train_step_unlearning(args, model, linear, criterion, optimizer, data_loader):
+    model.train()
+    linear.train()
+    total_correct = 0
+    total_count = 0
+    for content in data_loader:
+        _, images, labels, _ = content
+
+        images, labels = images.to(device), labels.to(device)
+        optimizer.zero_grad()
+        output = model(images)
+        output = linear(output)
+
+        loss = criterion(output, labels)
+
+        _, pred = output.topk(
+            1, 1, True, True
+        )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
+        # pred.shape: [bs, k=1]
+        pred = pred.squeeze(1)  # shape: [bs, ]
+
+        total_correct += (pred == labels).float().sum().item()
+        total_count += labels.shape[0]
+
+        nn.utils.clip_grad_norm_(
+            list(model.parameters()) + list(linear.parameters()),
+            max_norm=20,
+            norm_type=2,
+        )
+        (-loss).backward()
+        optimizer.step()
+
+    acc = float(total_correct) / total_count
+    return acc
 
 
 def generate_evalaution_results(
@@ -398,7 +687,7 @@ def main_worker(args):
         train_dataset = FileListDataset(
             args.train_file,
             train_transform,
-            ss_transform if args.detect_trigger_channels else None,
+            # ss_transform if args.detect_trigger_channels else None,
         )
 
         train_loader = DataLoader(
@@ -463,6 +752,21 @@ def main_worker(args):
             num_workers=args.workers,
             pin_memory=True,
         )
+
+        if args.use_mask_pruning:
+            # read train images (clean, 1% pr 10%)
+            train_dataset = FileListDataset(
+                args.train_file,
+                train_transform,
+                # ss_transform if args.detect_trigger_channels else None,
+            )
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=args.workers,
+                pin_memory=True,
+            )
 
     """
     SETUP: backbone model (Resnet)
@@ -578,7 +882,136 @@ def main_worker(args):
                 class_dir_list,
             )
 
-        # exit after evaluation is done
+        if args.use_mask_pruning:
+            # use mask pruning
+
+            backbone = copy.deepcopy(backbone)
+            linear = copy.deepcopy(linear)
+
+            criterion = torch.nn.CrossEntropyLoss().to(device)
+            optimizer = torch.optim.SGD(
+                list(backbone.parameters()) + list(linear.parameters()),
+                lr=args.unlearning_lr,
+                momentum=0.9,
+                weight_decay=5e-4,
+            )
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=args.schedule, gamma=0.1
+            )
+
+            #### stage 1: model unlearing
+            print(f">>>>>>>> start model unlearning")
+            for epoch in range(0, args.unlearning_epochs + 1):
+                # UNLEARNING
+                train_acc = train_step_unlearning(
+                    args=args,
+                    model=backbone,
+                    linear=linear,
+                    criterion=criterion,
+                    optimizer=optimizer,
+                    data_loader=train_loader,
+                )
+
+                scheduler.step()
+                print(f">>>>>>>> at epoch {epoch}, the train_acc is {train_acc}")
+
+                if train_acc <= args.clean_threshold:
+                    print(
+                        f">>>>>>>> arrive at early break of stage 1 unlearning at epoch {epoch}"
+                    )
+                    # end stage 1
+                    break
+
+            #### stage 2: model recovering
+            print(f">>>>>>>> start model recovering")
+            unlearned_model = models.__dict__[args.arch](
+                num_classes=512, norm_layer=MaskBatchNorm2d
+            )
+            unlearned_model.fc = nn.Sequential()
+
+            refill_unlearned_model(
+                unlearned_model, orig_state_dict=backbone.state_dict()
+            )
+
+            unlearned_model = unlearned_model.to(device)
+            criterion = torch.nn.CrossEntropyLoss().to(device)
+
+            parameters = list(unlearned_model.named_parameters())
+            mask_params = [
+                v for n, v in parameters if "neuron_mask" in n
+            ]  # only update neuron_mask ones
+            mask_optimizer = torch.optim.SGD(
+                mask_params, lr=args.recovering_lr, momentum=0.9
+            )
+
+            for epoch in range(1, args.recovering_epochs + 1):
+                train_step_recovering(
+                    args=args,
+                    unlearned_model=unlearned_model,
+                    linear=linear,
+                    criterion=criterion,
+                    data_loader=train_loader,
+                    mask_opt=mask_optimizer,
+                )
+
+            save_mask_scores(
+                unlearned_model.state_dict(),
+                os.path.join(args.save, "mask_values.txt"),
+            )
+
+            del unlearned_model, backbone
+
+            #### stage 3: model pruning
+            print(f">>>>>>>> start model pruning")
+            # read poisoned model again!
+            backbone = copy.deepcopy(backbone)
+            linear = copy.deepcopy(linear)
+
+            criterion = torch.nn.CrossEntropyLoss().to(device)
+            mask_file = os.path.join(args.save, "mask_values.txt")
+            mask_values = read_data(mask_file)
+            mask_values = sorted(mask_values, key=lambda x: float(x[2]))
+            print("No. \t Layer Name \t Neuron Idx \t Mask \t PoisonACC \t CleanACC")
+            cl_loss, cl_acc = test_maskprune(
+                args=args,
+                model=backbone,
+                linear=linear,
+                criterion=criterion,
+                data_loader=val_loader,
+                val_mode="clean",
+            )
+            po_loss, po_acc = test_maskprune(
+                args=args,
+                model=backbone,
+                linear=linear,
+                criterion=criterion,
+                data_loader=val_poisoned_loader,
+                val_mode="poison",
+            )
+            print(
+                "0 \t None     \t None  \t None   \t {:.4f} \t {:.4f}".format(
+                    # po_loss,
+                    po_acc * 100,
+                    # cl_loss,
+                    cl_acc * 100,
+                )
+            )  # this records the backdoored model's initial results
+
+            if args.pruning_by == "threshold":
+                evaluate_by_threshold(
+                    args,
+                    backbone,
+                    linear,
+                    mask_values,
+                    pruning_max=args.pruning_max,
+                    pruning_step=args.pruning_step,
+                    criterion=criterion,
+                    clean_loader=val_loader,
+                    poison_loader=val_poisoned_loader,
+                )
+            else:
+                raise Exception("Not implemented yet")
+
         return
 
     """
