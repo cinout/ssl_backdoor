@@ -571,14 +571,14 @@ def generate_evalaution_results(
     if args.detect_trigger_channels:
         for k in args.channel_num:
             np.save(
-                "{}/conf_matrix_clean_{k}.npy".format(args.save, k),
+                "{}/conf_matrix_clean_{}.npy".format(args.save, k),
                 conf_matrix_clean[k],
             )
             np.save(
-                "{}/conf_matrix_poisoned_{k}.npy".format(args.save, k),
+                "{}/conf_matrix_poisoned_{}.npy".format(args.save, k),
                 conf_matrix_poisoned[k],
             )
-            csv_name = "{}/conf_matrix_{k}.csv".format(args.save, k)
+            csv_name = "{}/conf_matrix_{}.csv".format(args.save, k)
             save_csv_file(
                 csv_name,
                 args,
