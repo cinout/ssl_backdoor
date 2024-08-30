@@ -36,7 +36,7 @@ from moco.dataset import FileListDataset
 import moco.loader
 from resnet.mask_batchnorm import MaskBatchNorm2d
 
-# TODO: comment out
+
 torch.set_printoptions(threshold=10000)
 np.set_printoptions(threshold=10000)
 
@@ -256,6 +256,28 @@ parser.add_argument(
 
 
 best_acc1 = 0
+
+
+def produces_evaluation_results(images, output, target, linear, top1, conf_matrix):
+    output = linear(
+        output
+    )  # shape:[bs, 100==#classes], value: probablity of each class
+
+    acc1, _ = accuracy(output, target, topk=(1, 5))  # each, shape: [1], value: acc
+
+    top1.update(acc1[0], images.size(0))
+
+    _, pred = output.topk(
+        1, 1, True, True
+    )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
+    pred_numpy = pred.cpu().numpy()
+    target_numpy = target.cpu().numpy()
+
+    for elem in range(target.size(0)):
+        # update confusion matrix: for each GT class, what is the predicted class
+        conf_matrix[target_numpy[elem], int(pred_numpy[elem])] += 1
+
+    return top1, conf_matrix
 
 
 def pruning(net, neuron):
@@ -484,49 +506,16 @@ def train_step_unlearning(args, model, linear, criterion, optimizer, data_loader
     return acc
 
 
-def generate_evalaution_results(
+def save_csv_file(
+    csv_name,
     args,
-    val_loader,
-    val_poisoned_loader,
-    backbone,
-    linear,
+    acc1,
+    acc1_p,
     imagenet_metadata_dict,
     class_dir_list,
-    k=0,
+    conf_matrix_clean,
+    conf_matrix_poisoned,
 ):
-    print(f">>>>>> evaluating clean validation set")
-    acc1, _, conf_matrix_clean = validate_conf_matrix(
-        val_loader, backbone, linear, args, k
-    )
-    print(f">>>>>> evaluating poisoned validation set")
-    acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
-        val_poisoned_loader, backbone, linear, args, k
-    )
-
-    # TODO: debug, remove
-    if k == 1:
-        exit()
-
-    print(f">>>>>> args.save is {args.save}, k is {k}")
-
-    if args.detect_trigger_channels:
-        np.save(
-            "{}/conf_matrix_clean_rmtriggerchannel_{}.npy".format(args.save, k),
-            conf_matrix_clean,
-        )
-        np.save(
-            "{}/conf_matrix_poisoned_rmtriggerchannel_{}.npy".format(args.save, k),
-            conf_matrix_poisoned,
-        )
-    else:
-        np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
-        np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
-
-    csv_name = (
-        "{}/conf_matrix_rmtriggerchannel_{}.csv".format(args.save, k)
-        if args.detect_trigger_channels
-        else "{}/conf_matrix.csv".format(args.save)
-    )
     with open(csv_name, "w") as f:
         f.write(
             "Model {},,Clean val,,,,Pois. val,,\n".format(
@@ -559,6 +548,60 @@ def generate_evalaution_results(
                     - conf_matrix_poisoned[target][target],
                 )
             )
+
+
+def generate_evalaution_results(
+    args,
+    val_loader,
+    val_poisoned_loader,
+    backbone,
+    linear,
+    imagenet_metadata_dict,
+    class_dir_list,
+):
+    print(f">>>>>> evaluating clean validation set")
+    acc1, _, conf_matrix_clean = validate_conf_matrix(
+        val_loader, backbone, linear, args
+    )
+    print(f">>>>>> evaluating poisoned validation set")
+    acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
+        val_poisoned_loader, backbone, linear, args
+    )
+
+    if args.detect_trigger_channels:
+        for k in args.channel_num:
+            np.save(
+                "{}/conf_matrix_clean_{k}.npy".format(args.save), conf_matrix_clean[k]
+            )
+            np.save(
+                "{}/conf_matrix_poisoned_{k}.npy".format(args.save),
+                conf_matrix_poisoned[k],
+            )
+            csv_name = "{}/conf_matrix_{k}.csv".format(args.save)
+            save_csv_file(
+                csv_name,
+                args,
+                acc1[k].avg,
+                acc1_p[k].avg,
+                imagenet_metadata_dict,
+                class_dir_list,
+                conf_matrix_clean[k],
+                conf_matrix_poisoned[k],
+            )
+    else:
+        np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
+        np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
+        csv_name = "{}/conf_matrix.csv".format(args.save)
+        save_csv_file(
+            csv_name,
+            args,
+            acc1,
+            acc1_p,
+            imagenet_metadata_dict,
+            class_dir_list,
+            conf_matrix_clean,
+            conf_matrix_poisoned,
+        )
 
 
 def main():
@@ -875,29 +918,15 @@ def main_worker(args):
             class_dir_list = sorted(class_dir_list)  # idx -> n01xxx
         # class_dir_list = sorted(os.listdir('/datasets/imagenet/train'))               # for ImageNet
 
-        if args.detect_trigger_channels:
-            for k in args.channel_num:
-                print(f">>>> generating results for removing top-{k} trigger channels")
-                generate_evalaution_results(
-                    args,
-                    val_loader,
-                    val_poisoned_loader,
-                    backbone,
-                    linear,
-                    imagenet_metadata_dict,
-                    class_dir_list,
-                    k=k,
-                )
-        else:
-            generate_evalaution_results(
-                args,
-                val_loader,
-                val_poisoned_loader,
-                backbone,
-                linear,
-                imagenet_metadata_dict,
-                class_dir_list,
-            )
+        generate_evalaution_results(
+            args,
+            val_loader,
+            val_poisoned_loader,
+            backbone,
+            linear,
+            imagenet_metadata_dict,
+            class_dir_list,
+        )
 
         if args.use_mask_pruning:
             # use mask pruning
@@ -1104,17 +1133,21 @@ def get_channels(arch):
     return c
 
 
-def find_trigger_channels(args, views, backbone, channel_num):
+def find_trigger_channels(args, views, backbone):
     views = torch.cat(views, dim=0)
     views = views.to(device)
     vision_features = backbone(views)  # [bs*n_views, 512]
-    total, c = vision_features.shape
+    total, C = vision_features.shape
     vision_features = vision_features.detach().cpu().numpy()
     u, s, v = np.linalg.svd(
         vision_features - np.mean(vision_features, axis=0, keepdims=True),
         full_matrices=False,
     )
+
+    # get top eigenvector
     eig_for_indexing = v[0:1]  # [1, C]
+
+    # adjust direction (sign)
     corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
     coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
     coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
@@ -1122,32 +1155,39 @@ def find_trigger_channels(args, views, backbone, channel_num):
         eig_for_indexing * vision_features * coeff_adjust
     )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
-    max_indices = np.argsort(elementwise, axis=1)
-    max_indices = max_indices[:, -channel_num:]  # [bs*n_view, channel_num]
+    # get indices
+    max_indices = np.argsort(
+        elementwise, axis=1
+    )  # [bs*n_view, C], C are indices, sorted by value from low to high
 
-    # TODO: remove this, for debugging
-    what_each_view_votes = max_indices.reshape(
-        int(total / args.num_views), args.num_views, channel_num
-    )  # [bs, num_views, channel_num]
-    what_each_view_votes = what_each_view_votes.reshape(int(total / args.num_views), -1)
-    print(f">>>>>>> what_each_view_votes is:")
-    print(what_each_view_votes)
+    this_bs = int(total / args.num_views)
+    max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-    # TODO: end of debugging
+    selected_contributing_channels = []
+    for k in range(1, max(args.channel_num) + 1):  # channel_num example: [1, 3, 6]
+        max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
+        entropies = []  # bs elements
 
-    max_indices = max_indices.flatten()  # [bs*n_view*topk_channel, ]
+        for votes in max_indices_at_channel:
+            votes_counter = Counter(votes).most_common()
+            counts = np.array([c for (name, c) in votes_counter])
+            p = counts / counts.sum()
+            h = -np.sum(p * np.log(p))
+            entropy = np.exp(h)
+            entropies.append(entropy)
 
-    # max_indices = np.argmax(elementwise, axis=1)
+        print(f">>>>> entropies at channel {k} are: {[round(e,2) for e in entropies]}")
+        entropies = np.array(entropies)
+        min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
 
-    occ_count = Counter(max_indices)
-    essential_indices = occ_count.most_common(channel_num)
-    print(
-        f"essential_indices: {essential_indices}; #samples: {total}"
-    )  # print (idx, count) tuples
-    essential_indices = torch.tensor(
-        [idx for (idx, occ_count) in essential_indices]
-    )  # remove count
-    return essential_indices
+        (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
+            1
+        )
+        print(f">>>>> channel_index is {channel_index}, count is {count}/{total}")
+
+        selected_contributing_channels.append(channel_index)
+
+    return selected_contributing_channels  # length is max(args.channel_num)
 
 
 def train(train_loader, backbone, linear, optimizer, epoch, args):
@@ -1263,24 +1303,39 @@ def validate(val_loader, backbone, linear, args):
 
 
 # used in eval mode, for generate output scores
-def validate_conf_matrix(val_loader, backbone, linear, args, channel_num=0):
-    batch_time = AverageMeter("Time", ":6.3f")
-    losses = AverageMeter("Loss", ":.4e")
-    top1 = AverageMeter("Acc@1", ":6.2f")
-    top5 = AverageMeter("Acc@5", ":6.2f")
-    progress = ProgressMeter(
-        len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
-    )
+def validate_conf_matrix(
+    val_loader,
+    backbone,
+    linear,
+    args,
+):
+    # batch_time = AverageMeter("Time", ":6.3f")
+    # losses = AverageMeter("Loss", ":.4e")
+    # top5 = AverageMeter("Acc@5", ":6.2f")
+    # progress = ProgressMeter(
+    #     len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
+    # )
+    if args.detect_trigger_channels:
+        conf_matrix_dict = {}
+        top1_dict = {}
+        for k in args.channel_num:
+            conf_matrix_dict[k] = np.zeros((100, 100))
+            top1_dict[k] = AverageMeter("Acc@1", ":6.2f")
+    else:
+        conf_matrix = np.zeros(
+            (100, 100)
+        )  # TODO[later]: for other dataset, this to be updated (THE ABOVE ONE TOO)
+        top1 = AverageMeter("Acc@1", ":6.2f")
 
     backbone.eval()
     linear.eval()
 
     # create confusion matrix ROWS ground truth COLUMNS pred
-    conf_matrix = np.zeros((100, 100))
     # conf_matrix = np.zeros((1000, 1000))                # for ImageNet
 
     with torch.no_grad():
-        end = time.time()
+        # end = time.time()
+
         for i, content in enumerate(val_loader):
             if args.detect_trigger_channels:
                 (_, images, views, target, _) = content
@@ -1289,53 +1344,67 @@ def validate_conf_matrix(val_loader, backbone, linear, args, channel_num=0):
 
             images = images.to(device)
             target = target.to(device)  # shape:[bs], value: GT class index 0-99
-
-            # compute output
             output = backbone(images)
+
             if args.detect_trigger_channels:
-                # FIND channels that are related to trigger (although in training, all images are clean)
-                essential_indices = find_trigger_channels(
-                    args, views, backbone, channel_num
+                contributing_indices = find_trigger_channels(args, views, backbone)
+
+                for k in args.channel_num:
+                    indices_toremove = contributing_indices[0:k]
+                    indices_toremove = np.unique(np.array(indices_toremove))
+                    output[:, indices_toremove] = 0.0
+                    top1_r, conf_matrix_r = produces_evaluation_results(
+                        images,
+                        output,
+                        target,
+                        linear,
+                        top1_dict[k],
+                        conf_matrix_dict[k],
+                    )
+                    top1_dict[k] = top1_r
+                    conf_matrix_dict[k] = conf_matrix_r
+            else:
+                top1, conf_matrix = produces_evaluation_results(
+                    images, output, target, linear, top1, conf_matrix
                 )
-                # set vallues to 0 at these indices
-                output[:, essential_indices] = 0.0
+                # output = linear(
+                #     output
+                # )  # shape:[bs, 100==#classes], value: probablity of each class
+                # # loss = F.cross_entropy(output, target)
 
-            output = linear(
-                output
-            )  # shape:[bs, 100==#classes], value: probablity of each class
-            loss = F.cross_entropy(output, target)
+                # acc1, _ = accuracy(
+                #     output, target, topk=(1, 5)
+                # )  # each, shape: [1], value: acc
 
-            acc1, acc5 = accuracy(
-                output, target, topk=(1, 5)
-            )  # each, shape: [1], value: acc
+                # # losses.update(loss.item(), images.size(0))
+                # top1.update(acc1[0], images.size(0))
+                # # top5.update(acc5[0], images.size(0))
 
-            losses.update(loss.item(), images.size(0))
-            top1.update(acc1[0], images.size(0))
-            top5.update(acc5[0], images.size(0))
+                # # # measure elapsed time
+                # # batch_time.update(time.time() - end)
+                # # end = time.time()
 
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+                # # if i % args.print_freq == 0:
+                # #     logger.info(progress.display(i))
 
-            if i % args.print_freq == 0:
-                logger.info(progress.display(i))
+                # _, pred = output.topk(
+                #     1, 1, True, True
+                # )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
+                # pred_numpy = pred.cpu().numpy()
+                # target_numpy = target.cpu().numpy()
 
-            _, pred = output.topk(
-                1, 1, True, True
-            )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
-            pred_numpy = pred.cpu().numpy()
-            target_numpy = target.cpu().numpy()
+                # for elem in range(target.size(0)):
+                #     # update confusion matrix: for each GT class, what is the predicted class
+                #     conf_matrix[target_numpy[elem], int(pred_numpy[elem])] += 1
 
-            for elem in range(target.size(0)):
-                # update confusion matrix: for each GT class, what is the predicted class
-                conf_matrix[target_numpy[elem], int(pred_numpy[elem])] += 1
-
-        # this should also be done with the ProgressMeter
-        logger.info(
-            " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
-        )
-
-    return top1.avg, top5.avg, conf_matrix
+        # # this should also be done with the ProgressMeter
+        # logger.info(
+        #     " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
+        # )
+    if args.detect_trigger_channels:
+        return top1_dict, None, conf_matrix_dict
+    else:
+        return top1.avg, None, conf_matrix
 
 
 # for getting mean and val to normalize features (from train set)
