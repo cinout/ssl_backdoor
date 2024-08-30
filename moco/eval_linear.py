@@ -1182,7 +1182,7 @@ def find_trigger_channels(args, views, backbone):
 
         (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
             1
-        )
+        )[0]
         print(f">>>>> channel_index is {channel_index}, count is {count}/{total}")
 
         selected_contributing_channels.append(channel_index)
