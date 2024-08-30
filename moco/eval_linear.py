@@ -1164,7 +1164,7 @@ def find_trigger_channels(args, views, backbone):
     this_bs = int(total / args.num_views)
     max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-    max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
+    max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
     entropies = []  # bs elements
 
     for votes in max_indices_at_channel:
