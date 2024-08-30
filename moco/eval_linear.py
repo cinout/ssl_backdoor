@@ -571,13 +571,14 @@ def generate_evalaution_results(
     if args.detect_trigger_channels:
         for k in args.channel_num:
             np.save(
-                "{}/conf_matrix_clean_{k}.npy".format(args.save), conf_matrix_clean[k]
+                "{}/conf_matrix_clean_{k}.npy".format(args.save, k),
+                conf_matrix_clean[k],
             )
             np.save(
-                "{}/conf_matrix_poisoned_{k}.npy".format(args.save),
+                "{}/conf_matrix_poisoned_{k}.npy".format(args.save, k),
                 conf_matrix_poisoned[k],
             )
-            csv_name = "{}/conf_matrix_{k}.csv".format(args.save)
+            csv_name = "{}/conf_matrix_{k}.csv".format(args.save, k)
             save_csv_file(
                 csv_name,
                 args,
@@ -1183,7 +1184,9 @@ def find_trigger_channels(args, views, backbone):
         (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
             1
         )[0]
-        print(f">>>>> channel_index is {channel_index}, count is {count}/{total}")
+        print(
+            f">>>>> channel_index is {channel_index}, count is {count}/{args.num_views}"
+        )
 
         selected_contributing_channels.append(channel_index)
 
