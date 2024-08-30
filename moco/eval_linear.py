@@ -490,9 +490,11 @@ def generate_evalaution_results(
     class_dir_list,
     k=0,
 ):
+    print(f">>>>>> evaluatoing clean validation set")
     acc1, _, conf_matrix_clean = validate_conf_matrix(
         val_loader, backbone, linear, args, k
     )
+    print(f">>>>>> evaluatoing poisoned validation set")
     acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
         val_poisoned_loader, backbone, linear, args, k
     )
@@ -1095,7 +1097,7 @@ def get_channels(arch):
     return c
 
 
-def find_trigger_channels(views, backbone, channel_num):
+def find_trigger_channels(args, views, backbone, channel_num):
     views = torch.cat(views, dim=0)
     views = views.to(device)
     vision_features = backbone(views)  # [bs*n_views, 512]
@@ -1114,7 +1116,16 @@ def find_trigger_channels(views, backbone, channel_num):
     )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
     max_indices = np.argsort(elementwise, axis=1)
-    max_indices = max_indices[:, -channel_num:]
+    max_indices = max_indices[:, -channel_num:]  # [bs*n_view, channel_num]
+    # TODO: remove this, for debugging
+    what_each_view_votes = max_indices.reshape(
+        int(total / args.num_views), args.num_views, channel_num
+    )  # [bs, num_views, channel_num]
+    print(f">>>>>>> what_each_view_votes is:")
+    print(what_each_view_votes)
+
+    # TODO: end of debugging
+
     max_indices = max_indices.flatten()  # [bs*n_view*topk_channel, ]
 
     # max_indices = np.argmax(elementwise, axis=1)
@@ -1274,7 +1285,9 @@ def validate_conf_matrix(val_loader, backbone, linear, args, channel_num=0):
             output = backbone(images)
             if args.detect_trigger_channels:
                 # FIND channels that are related to trigger (although in training, all images are clean)
-                essential_indices = find_trigger_channels(views, backbone, channel_num)
+                essential_indices = find_trigger_channels(
+                    args, views, backbone, channel_num
+                )
                 # set vallues to 0 at these indices
                 output[:, essential_indices] = 0.0
 

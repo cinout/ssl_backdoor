@@ -55,6 +55,7 @@ def get_ss_score(
             eig_for_indexing * full_cov * coeff_adjust
         )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
+        # TODO: need an update
         max_indices = np.argmax(elementwise, axis=1)
         occ_count = Counter(max_indices)
         essential_indices = [
