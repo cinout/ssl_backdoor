@@ -38,6 +38,7 @@ from resnet.mask_batchnorm import MaskBatchNorm2d
 
 # TODO: comment out
 torch.set_printoptions(threshold=10000)
+np.set_printoptions(threshold=10000)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -502,6 +503,7 @@ def generate_evalaution_results(
         val_poisoned_loader, backbone, linear, args, k
     )
 
+    # TODO: debug, remove
     if k == 1:
         exit()
 
