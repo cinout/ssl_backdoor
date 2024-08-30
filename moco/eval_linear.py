@@ -36,6 +36,9 @@ from moco.dataset import FileListDataset
 import moco.loader
 from resnet.mask_batchnorm import MaskBatchNorm2d
 
+# TODO: comment out
+torch.set_printoptions(threshold=10000)
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 parser = argparse.ArgumentParser(description="Linear evaluation of contrastive model")
@@ -498,6 +501,9 @@ def generate_evalaution_results(
     acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
         val_poisoned_loader, backbone, linear, args, k
     )
+
+    if k == 1:
+        exit()
 
     print(f">>>>>> args.save is {args.save}, k is {k}")
 
@@ -1124,9 +1130,6 @@ def find_trigger_channels(args, views, backbone, channel_num):
     what_each_view_votes = what_each_view_votes.reshape(int(total / args.num_views), -1)
     print(f">>>>>>> what_each_view_votes is:")
     print(what_each_view_votes)
-
-    if channel_num==1:
-        exit()
 
     # TODO: end of debugging
 
