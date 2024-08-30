@@ -490,11 +490,11 @@ def generate_evalaution_results(
     class_dir_list,
     k=0,
 ):
-    print(f">>>>>> evaluatoing clean validation set")
+    print(f">>>>>> evaluating clean validation set")
     acc1, _, conf_matrix_clean = validate_conf_matrix(
         val_loader, backbone, linear, args, k
     )
-    print(f">>>>>> evaluatoing poisoned validation set")
+    print(f">>>>>> evaluating poisoned validation set")
     acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
         val_poisoned_loader, backbone, linear, args, k
     )
@@ -968,7 +968,6 @@ def main_worker(args):
                 os.path.join(args.save, "mask_values.txt"),
             )
 
-            # TODO: new backbone
             del unlearned_model, backbone_copy, linear_copy
 
             #### stage 3: model pruning
@@ -1117,12 +1116,17 @@ def find_trigger_channels(args, views, backbone, channel_num):
 
     max_indices = np.argsort(elementwise, axis=1)
     max_indices = max_indices[:, -channel_num:]  # [bs*n_view, channel_num]
+
     # TODO: remove this, for debugging
     what_each_view_votes = max_indices.reshape(
         int(total / args.num_views), args.num_views, channel_num
     )  # [bs, num_views, channel_num]
+    what_each_view_votes = what_each_view_votes.reshape(int(total / args.num_views), -1)
     print(f">>>>>>> what_each_view_votes is:")
     print(what_each_view_votes)
+
+    if channel_num==1:
+        exit()
 
     # TODO: end of debugging
 
