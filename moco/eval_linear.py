@@ -1168,7 +1168,6 @@ def find_trigger_channels(args, views, backbone):
     for k in range(1, max(args.channel_num) + 1):  # channel_num example: [1, 3, 6]
         max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
         entropies = []  # bs elements
-        entropies = np.array(entropies)
 
         for votes in max_indices_at_channel:
             votes_counter = Counter(votes).most_common()
@@ -1178,6 +1177,7 @@ def find_trigger_channels(args, views, backbone):
             entropy = np.exp(h)
             entropies.append(entropy)
 
+        entropies = np.array(entropies)
         # print(f">>>>> entropies at channel {k} are: {[round(e,2) for e in entropies]}")
         print(
             f">>>>> entropies at channel {k}: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
