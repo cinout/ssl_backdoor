@@ -1164,37 +1164,66 @@ def find_trigger_channels(args, views, backbone):
     this_bs = int(total / args.num_views)
     max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-    selected_contributing_channels = []
-    for k in range(1, max(args.channel_num) + 1):  # channel_num example: [1, 3, 6]
-        max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
-        entropies = []  # bs elements
+    max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
+    entropies = []  # bs elements
 
-        for votes in max_indices_at_channel:
-            votes_counter = Counter(votes).most_common()
-            counts = np.array([c for (name, c) in votes_counter])
-            p = counts / counts.sum()
-            h = -np.sum(p * np.log(p))
-            entropy = np.exp(h)
-            entropies.append(entropy)
+    for votes in max_indices_at_channel:
+        votes_counter = Counter(votes).most_common()
+        counts = np.array([c for (name, c) in votes_counter])
+        p = counts / counts.sum()
+        h = -np.sum(p * np.log(p))
+        entropy = np.exp(h)
+        entropies.append(entropy)
 
-        entropies = np.array(entropies)
-        # print(f">>>>> entropies at channel {k} are: {[round(e,2) for e in entropies]}")
-        print(
-            f">>>>> entropies at channel {k}: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
-        )
+    entropies = np.array(entropies)
 
-        min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
+    print(
+        f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
+    )
+    min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
+    essential_indices = Counter(max_indices_at_channel[min_index]).most_common(
+        max(args.channel_num)
+    )
 
-        (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
-            1
-        )[0]
-        print(
-            f">>>>> channel_index is {channel_index}, count is {count}/{args.num_views}"
-        )
+    print(
+        f"essential_indices: {essential_indices}; #samples: {args.num_views}"
+    )  # print (idx, count) tuples
+    essential_indices = torch.tensor(
+        [idx for (idx, occ_count) in essential_indices]
+    )  # remove count
+    return essential_indices
 
-        selected_contributing_channels.append(channel_index)
+    # selected_contributing_channels = []
+    # for k in range(1, max(args.channel_num) + 1):  # channel_num example: [1, 3, 6]
+    #     max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
+    #     entropies = []  # bs elements
 
-    return selected_contributing_channels  # length is max(args.channel_num)
+    #     for votes in max_indices_at_channel:
+    #         votes_counter = Counter(votes).most_common()
+    #         counts = np.array([c for (name, c) in votes_counter])
+    #         p = counts / counts.sum()
+    #         h = -np.sum(p * np.log(p))
+    #         entropy = np.exp(h)
+    #         entropies.append(entropy)
+
+    #     entropies = np.array(entropies)
+    #     # print(f">>>>> entropies at channel {k} are: {[round(e,2) for e in entropies]}")
+    #     print(
+    #         f">>>>> entropies at channel {k}: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
+    #     )
+
+    #     min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
+
+    #     (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
+    #         1
+    #     )[0]
+    #     print(
+    #         f">>>>> channel_index is {channel_index}, count is {count}/{args.num_views}"
+    #     )
+
+    #     selected_contributing_channels.append(channel_index)
+
+    # return selected_contributing_channels  # length is max(args.channel_num)
 
 
 def train(train_loader, backbone, linear, optimizer, epoch, args):
@@ -1354,11 +1383,12 @@ def validate_conf_matrix(
             output = backbone(images)
 
             if args.detect_trigger_channels:
-                contributing_indices = find_trigger_channels(args, views, backbone)
+                contributing_indices = find_trigger_channels(
+                    args, views, backbone
+                )  # a torch tensor
 
                 for k in args.channel_num:
                     indices_toremove = contributing_indices[0:k]
-                    indices_toremove = np.unique(np.array(indices_toremove))
                     output[:, indices_toremove] = 0.0
                     top1_r, conf_matrix_r = produces_evaluation_results(
                         images,
