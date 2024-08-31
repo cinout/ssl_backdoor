@@ -1360,7 +1360,7 @@ def validate_conf_matrix(
     else:
         conf_matrix = np.zeros(
             (100, 100)
-        )  # TODO[later]: for other dataset, this to be updated (THE ABOVE ONE TOO)
+        )  # TODO: [later] for other dataset, this to be updated (THE ABOVE ONE TOO)
         top1 = AverageMeter("Acc@1", ":6.2f")
 
     backbone.eval()
