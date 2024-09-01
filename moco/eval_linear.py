@@ -171,6 +171,11 @@ parser.add_argument(
     type=int,
     help="a new hp, determine k channels of EACH SAMPLE",
 )
+parser.add_argument(
+    "--minority_percent",
+    type=float,
+    default=0.005,
+)
 
 parser.add_argument(
     "--num_views",
@@ -1134,96 +1139,79 @@ def get_channels(arch):
     return c
 
 
-def find_trigger_channels(args, views, backbone):
-    views = torch.cat(views, dim=0)
-    views = views.to(device)
-    vision_features = backbone(views)  # [bs*n_views, 512]
-    total, C = vision_features.shape
-    vision_features = vision_features.detach().cpu().numpy()
-    u, s, v = np.linalg.svd(
-        vision_features - np.mean(vision_features, axis=0, keepdims=True),
-        full_matrices=False,
-    )
+def find_trigger_channels(args, data_loader, backbone):
+    all_entropies = []  # for all images in the dataset
+    all_votes = []  # for all images in the dataset
+    total_images = 0
 
-    # get top eigenvector
-    eig_for_indexing = v[0:1]  # [1, C]
+    for i, content in enumerate(data_loader):
+        (_, images, views, target, _) = content
+        views = torch.cat(views, dim=0)
+        views = views.to(device)
+        vision_features = backbone(views)  # [bs*n_views, 512]
+        total, C = vision_features.shape
+        vision_features = vision_features.detach().cpu().numpy()
+        u, s, v = np.linalg.svd(
+            vision_features - np.mean(vision_features, axis=0, keepdims=True),
+            full_matrices=False,
+        )
 
-    # adjust direction (sign)
-    corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
-    coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
-    coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
-    elementwise = (
-        eig_for_indexing * vision_features * coeff_adjust
-    )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+        # get top eigenvector
+        eig_for_indexing = v[0:1]  # [1, C]
 
-    # get indices
-    max_indices = np.argsort(
-        elementwise, axis=1
-    )  # [bs*n_view, C], C are indices, sorted by value from low to high
+        # adjust direction (sign)
+        corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
+        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+        elementwise = (
+            eig_for_indexing * vision_features * coeff_adjust
+        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
-    this_bs = int(total / args.num_views)
-    max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
+        # get contributing indices sorted from low to high
+        max_indices = np.argsort(
+            elementwise, axis=1
+        )  # [bs*n_view, C], C are indices, sorted by value from low to high
+        this_bs = int(total / args.num_views)
+        total_images += this_bs
+        max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-    max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
-    entropies = []  # bs elements
+        # only consider the top-1 index
+        max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
+        entropies = []  # bs elements
+        for votes in max_indices_at_channel:  # for each original image
+            votes_counter = Counter(votes).most_common()
+            counts = np.array([c for (name, c) in votes_counter])
+            p = counts / counts.sum()
+            h = -np.sum(p * np.log(p))
+            entropy = np.exp(h)
+            entropies.append(entropy)
 
-    for votes in max_indices_at_channel:
-        votes_counter = Counter(votes).most_common()
-        counts = np.array([c for (name, c) in votes_counter])
-        p = counts / counts.sum()
-        h = -np.sum(p * np.log(p))
-        entropy = np.exp(h)
-        entropies.append(entropy)
+        all_entropies.extend(entropies)
+        all_votes.append(max_indices_at_channel)
 
-    entropies = np.array(entropies)
+        # print(
+        #     f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
+        # )
+        # min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
 
+    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
+    all_entropies = np.array(all_entropies)
+    all_entropies = np.argsort(
+        all_entropies
+    )  # indices, sorted from low to high by entropy value
+    minority_num = int(total_images * args.minority_percent)
+    minority_indices = all_entropies[:minority_num]
+    all_votes = all_votes[minority_indices]  # votes by minority, [minority_num, n_view]
+
+    # obtain trigger channels
+    essential_indices = Counter(all_votes.flatten()).most_common(max(args.channel_num))
     print(
-        f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
+        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views}"
     )
-    min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
-    essential_indices = Counter(max_indices_at_channel[min_index]).most_common(
-        max(args.channel_num)
-    )
-
-    print(
-        f"essential_indices: {essential_indices}; #samples: {args.num_views}"
-    )  # print (idx, count) tuples
     essential_indices = torch.tensor(
         [idx for (idx, occ_count) in essential_indices]
     )  # remove count
     return essential_indices
-
-    # selected_contributing_channels = []
-    # for k in range(1, max(args.channel_num) + 1):  # channel_num example: [1, 3, 6]
-    #     max_indices_at_channel = max_indices[:, :, -k]  # [bs, n_view]
-    #     entropies = []  # bs elements
-
-    #     for votes in max_indices_at_channel:
-    #         votes_counter = Counter(votes).most_common()
-    #         counts = np.array([c for (name, c) in votes_counter])
-    #         p = counts / counts.sum()
-    #         h = -np.sum(p * np.log(p))
-    #         entropy = np.exp(h)
-    #         entropies.append(entropy)
-
-    #     entropies = np.array(entropies)
-    #     # print(f">>>>> entropies at channel {k} are: {[round(e,2) for e in entropies]}")
-    #     print(
-    #         f">>>>> entropies at channel {k}: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
-    #     )
-
-    #     min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
-
-    #     (channel_index, count) = Counter(max_indices_at_channel[min_index]).most_common(
-    #         1
-    #     )[0]
-    #     print(
-    #         f">>>>> channel_index is {channel_index}, count is {count}/{args.num_views}"
-    #     )
-
-    #     selected_contributing_channels.append(channel_index)
-
-    # return selected_contributing_channels  # length is max(args.channel_num)
 
 
 def train(train_loader, backbone, linear, optimizer, epoch, args):
@@ -1261,15 +1249,6 @@ def train(train_loader, backbone, linear, optimizer, epoch, args):
         # compute output
         with torch.no_grad():
             output = backbone(images)
-
-            ##### WE DON:T need this during training
-            # if args.detect_trigger_channels:
-            #     # FIND channels that are related to trigger (although in training, all images are clean)
-            #     essential_indices = find_trigger_channels(
-            #         views, backbone, args.channel_num
-            #     )
-            #     # set vallues to 0 at these indices
-            #     output[:, essential_indices] = 0.0
 
         output = linear(output)
         loss = F.cross_entropy(output, target)
@@ -1352,15 +1331,18 @@ def validate_conf_matrix(
     #     len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
     # )
     if args.detect_trigger_channels:
+        # initialize EVALUATION RESULTS dict
         conf_matrix_dict = {}
         top1_dict = {}
         for k in args.channel_num:
             conf_matrix_dict[k] = np.zeros((100, 100))
             top1_dict[k] = AverageMeter("Acc@1", ":6.2f")
+
+        contributing_indices = find_trigger_channels(args, val_loader, backbone)
     else:
         conf_matrix = np.zeros(
             (100, 100)
-        )  # TODO: [later] for other dataset, this to be updated (THE ABOVE ONE TOO)
+        )  # TODO: [later]: for other dataset, this to be updated (THE ABOVE ONE TOO)
         top1 = AverageMeter("Acc@1", ":6.2f")
 
     backbone.eval()
@@ -1383,10 +1365,6 @@ def validate_conf_matrix(
             output = backbone(images)
 
             if args.detect_trigger_channels:
-                contributing_indices = find_trigger_channels(
-                    args, views, backbone
-                )  # a torch tensor
-
                 for k in args.channel_num:
                     indices_toremove = contributing_indices[0:k]
                     output[:, indices_toremove] = 0.0
