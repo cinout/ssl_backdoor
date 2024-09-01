@@ -1211,6 +1211,9 @@ def find_trigger_channels(args, data_loader, backbone):
     print(
         f"lowest entropies are: {[ round(item,2) for item in all_entropies[minority_indices]]}"
     )
+    print(
+        f"entropy mean is {np.mean(all_entropies):.2f}, std is {np.std(all_entropies):.2f}"
+    )
     essential_indices = torch.tensor(
         [idx for (idx, occ_count) in essential_indices]
     )  # remove count
