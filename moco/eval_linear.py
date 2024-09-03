@@ -801,7 +801,7 @@ def main_worker(args):
                 ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=False,
+            shuffle=True,  # TODO: True or False
             num_workers=args.workers,
             pin_memory=True,
         )
@@ -814,7 +814,7 @@ def main_worker(args):
                 ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=False,
+            shuffle=True,  # TODO: True or False
             num_workers=args.workers,
             pin_memory=True,
         )
