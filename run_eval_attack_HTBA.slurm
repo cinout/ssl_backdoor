@@ -42,13 +42,13 @@ python eval_linear.py \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/val_poisoned/loc_random_loc-min_0.10_loc-max_0.90_alpha_0.00_width_50_filelist.txt \
     --resume ./HTBA_bs64_world4/HTBA_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
-    --detect_trigger_channels \
-    --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
-    --num_views 64 \
     --batch-size 128 \
     --evaluate \
     --load_cache \
     --seed 42 \
+    # --detect_trigger_channels \
+    # --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
+    # --num_views 64 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
