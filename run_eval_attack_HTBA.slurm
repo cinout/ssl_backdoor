@@ -47,8 +47,9 @@ python eval_linear.py \
     --load_cache \
     --seed 42 \
     --detect_trigger_channels \
-    --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
+    --channel_num 1 2 3 4 6 8 10 \
     --num_views 64 \
+    # --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
