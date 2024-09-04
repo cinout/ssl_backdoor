@@ -1180,7 +1180,7 @@ def find_trigger_channels(args, data_loader, backbone):
 
         # TODO: consider the top-channel_num indices
         max_indices_at_channel = max_indices[
-            :, :, -args.channel_num :
+            :, :, -max(args.channel_num) :
         ]  # [bs, n_view, channel_num]
         max_indices_at_channel = max_indices_at_channel.reshape(
             this_bs, -1
