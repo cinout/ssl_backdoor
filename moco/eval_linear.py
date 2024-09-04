@@ -1175,8 +1175,17 @@ def find_trigger_channels(args, data_loader, backbone):
         total_images += this_bs
         max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-        # only consider the top-1 index
-        max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
+        # # TODO: only consider the top-1 index
+        # max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
+
+        # TODO: consider the top-channel_num indices
+        max_indices_at_channel = max_indices[
+            :, :, -args.channel_num :
+        ]  # [bs, n_view, channel_num]
+        max_indices_at_channel = max_indices_at_channel.reshape(
+            this_bs, -1
+        )  # [bs, n_view*channel_num]
+
         entropies = []  # bs elements
         for votes in max_indices_at_channel:  # for each original image
             votes_counter = Counter(votes).most_common()
@@ -1194,20 +1203,28 @@ def find_trigger_channels(args, data_loader, backbone):
         # )
         # min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
 
-    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
     all_entropies = np.array(all_entropies)
     all_entropies_indices = np.argsort(
         all_entropies
     )  # indices, sorted from low to high by entropy value
     minority_num = int(total_images * args.minority_percent)
     minority_indices = all_entropies_indices[:minority_num]
+
+    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
     all_votes = all_votes[minority_indices]  # votes by minority, [minority_num, n_view]
 
     # obtain trigger channels
     essential_indices = Counter(all_votes.flatten()).most_common(max(args.channel_num))
+
+    # # TODO: only consider the top-1 index
+    # print(
+    #     f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views}"
+    # )
+    # TODO: consider the top-channel_num indices
     print(
-        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views}"
+        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*args.channel_num}"
     )
+
     print(
         f"lowest entropies are: {[ round(item,2) for item in all_entropies[minority_indices]]}"
     )

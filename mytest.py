@@ -33,5 +33,5 @@ import time
 # print(min_index)
 
 a = [2, 3, 5, 1, 2]
-a = np.unique(np.array(a))
-print(a)
+
+print(a[-2:])
