@@ -801,7 +801,7 @@ def main_worker(args):
                 ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=True,  # TODO: True or False
+            shuffle=True,
             num_workers=args.workers,
             pin_memory=True,
         )
@@ -814,7 +814,7 @@ def main_worker(args):
                 ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=True,  # TODO: True or False
+            shuffle=True,
             num_workers=args.workers,
             pin_memory=True,
         )
@@ -1175,10 +1175,13 @@ def find_trigger_channels(args, data_loader, backbone):
         total_images += this_bs
         max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-        # # TODO: only consider the top-1 index
+        # TODO: remove later
+        print(max_indices.flatten())
+
+        #  only consider the top-1 index
         # max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
 
-        # TODO: consider the top-channel_num indices
+        #  consider the top-channel_num indices
         max_indices_at_channel = max_indices[
             :, :, -max(args.channel_num) :
         ]  # [bs, n_view, channel_num]
@@ -1216,13 +1219,13 @@ def find_trigger_channels(args, data_loader, backbone):
     # obtain trigger channels
     essential_indices = Counter(all_votes.flatten()).most_common(max(args.channel_num))
 
-    # # TODO: only consider the top-1 index
+    #  only consider the top-1 index
     # print(
     #     f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views}"
     # )
-    # TODO: consider the top-channel_num indices
+    # consider the top-channel_num indices
     print(
-        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*args.channel_num}"
+        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
     )
 
     print(
