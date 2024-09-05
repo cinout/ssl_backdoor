@@ -565,14 +565,14 @@ def generate_evalaution_results(
     class_dir_list,
 ):
     # TODO: uncommet
-    # print(f">>>>>> evaluating clean validation set")
-    # acc1, _, conf_matrix_clean = validate_conf_matrix(
-    #     val_loader, backbone, linear, args
-    # )
-    print(f">>>>>> evaluating poisoned validation set")
-    acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
-        val_poisoned_loader, backbone, linear, args
+    print(f">>>>>> evaluating clean validation set")
+    acc1, _, conf_matrix_clean = validate_conf_matrix(
+        val_loader, backbone, linear, args
     )
+    # print(f">>>>>> evaluating poisoned validation set")
+    # acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
+    #     val_poisoned_loader, backbone, linear, args
+    # )
     # TODO: remove
 
     exit()
