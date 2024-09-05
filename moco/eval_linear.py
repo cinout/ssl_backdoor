@@ -1139,6 +1139,10 @@ def get_channels(arch):
     return c
 
 
+# TODO: remove later
+visited = 0
+
+
 def find_trigger_channels(args, data_loader, backbone):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
@@ -1176,7 +1180,10 @@ def find_trigger_channels(args, data_loader, backbone):
         max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
         # TODO: remove later
-        print(max_indices.flatten())
+        global visited
+        with open(f"zz_{visited}.npy", "wb") as f:
+            np.save(f, max_indices.flatten())
+        visited += 1
 
         #  only consider the top-1 index
         # max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
@@ -1205,6 +1212,8 @@ def find_trigger_channels(args, data_loader, backbone):
         #     f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
         # )
         # min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
+        # TODO: remove later
+        break
 
     all_entropies = np.array(all_entropies)
     all_entropies_indices = np.argsort(
