@@ -12,14 +12,8 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import time
 
-visited = 0
-
-
-def change_visited():
-    global visited
-    print(visited)
-    visited += 1
-
-
-change_visited()
-change_visited()
+with open("zz_clean.npy", "rb") as f:
+    clean_voted_channels = np.load(f)
+with open("zz_poison.npy", "rb") as f:
+    poison_voted_channels = np.load(f)
+print(clean_voted_channels.shape)

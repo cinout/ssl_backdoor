@@ -1143,10 +1143,6 @@ def get_channels(arch):
     return c
 
 
-# TODO: remove later
-visited = 0
-
-
 def find_trigger_channels(args, data_loader, backbone):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
@@ -1183,12 +1179,6 @@ def find_trigger_channels(args, data_loader, backbone):
         total_images += this_bs
         max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
 
-        # TODO: remove later
-        global visited
-        with open(f"zz_{visited}.npy", "wb") as f:
-            np.save(f, max_indices.flatten())
-        visited += 1
-
         #  only consider the top-1 index
         # max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
 
@@ -1196,6 +1186,11 @@ def find_trigger_channels(args, data_loader, backbone):
         max_indices_at_channel = max_indices[
             :, :, -max(args.channel_num) :
         ]  # [bs, n_view, channel_num]
+
+        # TODO: remove later
+        with open(f"zz.npy", "wb") as f:
+            np.save(f, max_indices_at_channel.flatten())
+
         max_indices_at_channel = max_indices_at_channel.reshape(
             this_bs, -1
         )  # [bs, n_view*channel_num]
