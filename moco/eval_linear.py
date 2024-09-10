@@ -166,6 +166,14 @@ parser.add_argument(
 parser.add_argument("--eval_data", type=str, default="", help="eval identifier")
 
 # new experiments (for finding trigger channels)
+# TODO: update
+parser.add_argument(
+    "--minority_criterion",
+    type=str,
+    choices=["entropy", "ss_score"],
+    default="entropy",
+    help="how to find minority (bd samples)",
+)
 parser.add_argument(
     "--detect_trigger_channels",
     action="store_true",
@@ -1245,13 +1253,19 @@ def find_trigger_channels(args, data_loader, backbone):
         )  # [bs, n_view*channel_num]
 
         entropies = []  # bs elements
-        for votes in max_indices_at_channel:  # for each original image
-            votes_counter = Counter(votes).most_common()
-            counts = np.array([c for (name, c) in votes_counter])
-            p = counts / counts.sum()
-            h = -np.sum(p * np.log(p))
-            entropy = np.exp(h)
-            entropies.append(entropy)
+        if args.minority_criterion == "entropy":
+            for votes in max_indices_at_channel:  # for each original image
+                votes_counter = Counter(votes).most_common()
+                counts = np.array([c for (name, c) in votes_counter])
+                p = counts / counts.sum()
+                h = -np.sum(p * np.log(p))
+                entropy = np.exp(h)
+                entropies.append(entropy)
+        elif args.minority_criterion == "ss_score":
+            corrs = np.abs(corrs)
+            corrs = corrs.reshape(args.num_views, -1)  # [n_views, bs]
+            ss_scores = np.max(corrs, axis=0).tolist()  # [bs]
+            entropies.extend(ss_scores)
 
         # update lists
         all_entropies.extend(entropies)

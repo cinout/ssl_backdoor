@@ -51,10 +51,10 @@ python eval_linear.py \
     --load_cache \
     --seed 42 \
     --detect_trigger_channels \
-    --channel_num 1 2 4 8 12 16 20 24 \
+    --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
     --num_views 64 \
-    # --poisoned_train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
-    # --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
-
+    \
+    --minority_criterion ss_score \
+    
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
