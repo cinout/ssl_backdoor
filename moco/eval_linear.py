@@ -585,41 +585,63 @@ def generate_evalaution_results(
         val_poisoned_loader, backbone, linear, contributing_indices, args
     )
 
+    target = args.target_class
+
     if args.detect_trigger_channels:
         for k in args.channel_num:
-            np.save(
-                "{}/conf_matrix_clean_{}.npy".format(args.save, k),
-                conf_matrix_clean[k],
+            clean_acc = acc1[k].avg
+            fp_count = (
+                conf_matrix_poisoned[k][:, target].sum()
+                - conf_matrix_poisoned[k][target][target]
             )
-            np.save(
-                "{}/conf_matrix_poisoned_{}.npy".format(args.save, k),
-                conf_matrix_poisoned[k],
+            asr = (
+                fp_count
+                / (
+                    conf_matrix_poisoned[k][:, :].sum()
+                    - conf_matrix_poisoned[k][target, :].sum()
+                )
+                * 100
             )
-            csv_name = "{}/conf_matrix_{}.csv".format(args.save, k)
-            save_csv_file(
-                csv_name,
-                args,
-                acc1[k].avg,
-                acc1_p[k].avg,
-                imagenet_metadata_dict,
-                class_dir_list,
-                conf_matrix_clean[k],
-                conf_matrix_poisoned[k],
+            print(
+                f"After removing {k} channels, the accuracy is {clean_acc}, fp_count is {fp_count}, asr on target class {target} is {asr}"
             )
+
+            # np.save(
+            #     "{}/conf_matrix_clean_{}.npy".format(args.save, k),
+            #     conf_matrix_clean[k],
+            # )
+            # np.save(
+            #     "{}/conf_matrix_poisoned_{}.npy".format(args.save, k),
+            #     conf_matrix_poisoned[k],
+            # )
+            # csv_name = "{}/conf_matrix_{}.csv".format(args.save, k)
+            # save_csv_file(
+            #     csv_name,
+            #     args,
+            #     acc1[k].avg,
+            #     acc1_p[k].avg,
+            #     imagenet_metadata_dict,
+            #     class_dir_list,
+            #     conf_matrix_clean[k],
+            #     conf_matrix_poisoned[k],
+            # )
     else:
-        np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
-        np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
-        csv_name = "{}/conf_matrix.csv".format(args.save)
-        save_csv_file(
-            csv_name,
-            args,
-            acc1,
-            acc1_p,
-            imagenet_metadata_dict,
-            class_dir_list,
-            conf_matrix_clean,
-            conf_matrix_poisoned,
-        )
+        # print(f"The accuracy is {acc1.avg}, FP on target class {args.target_class} is {conf_matrix_poisoned[:, args.target_class].sum()- conf_matrix_poisoned[args.target_class][args.target_class]}")
+        pass
+
+        # np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
+        # np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
+        # csv_name = "{}/conf_matrix.csv".format(args.save)
+        # save_csv_file(
+        #     csv_name,
+        #     args,
+        #     acc1,
+        #     acc1_p,
+        #     imagenet_metadata_dict,
+        #     class_dir_list,
+        #     conf_matrix_clean,
+        #     conf_matrix_poisoned,
+        # )
 
 
 def main():

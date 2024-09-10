@@ -45,6 +45,7 @@ python eval_linear.py \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/val_poisoned/loc_random_loc-min_0.10_loc-max_0.90_alpha_0.00_width_50_filelist.txt \
     \
+    --target_class 26 \
     --batch-size 128 \
     --evaluate \
     --load_cache \
