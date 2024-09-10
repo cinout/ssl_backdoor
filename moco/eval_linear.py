@@ -775,6 +775,14 @@ def main_worker(args):
         ]
     )
 
+    just_resize_transform = transforms.Compose(
+        [
+            transforms.Resize(224),
+            transforms.ToTensor(),
+            normalize,
+        ]
+    )
+
     val_transform = transforms.Compose(
         [
             transforms.Resize(256),
@@ -848,7 +856,9 @@ def main_worker(args):
         # poisoned train dataset D
         if args.detect_trigger_channels:
             poisoned_train_loader = torch.utils.data.DataLoader(
-                FileListDataset(args.poisoned_train_file, val_transform, ss_transform),
+                FileListDataset(
+                    args.poisoned_train_file, just_resize_transform, ss_transform
+                ),
                 batch_size=args.batch_size,
                 shuffle=True,
                 num_workers=args.workers,
