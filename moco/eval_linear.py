@@ -149,6 +149,12 @@ parser.add_argument(
     help="file containing training image paths",
 )
 parser.add_argument(
+    "--poisoned_train_file",
+    type=str,
+    required=True,
+    help="file containing original poisoned training image paths",
+)
+parser.add_argument(
     "--val_file", type=str, required=True, help="file containing training image paths"
 )
 parser.add_argument(
@@ -557,6 +563,7 @@ def save_csv_file(
 
 def generate_evalaution_results(
     args,
+    poisoned_train_loader,
     val_loader,
     val_poisoned_loader,
     backbone,
@@ -564,18 +571,19 @@ def generate_evalaution_results(
     imagenet_metadata_dict,
     class_dir_list,
 ):
-    # TODO: uncommet
+    if args.detect_trigger_channels:
+        contributing_indices = find_trigger_channels(
+            args, poisoned_train_loader, backbone
+        )
+
     print(f">>>>>> evaluating clean validation set")
     acc1, _, conf_matrix_clean = validate_conf_matrix(
-        val_loader, backbone, linear, args
+        val_loader, backbone, linear, contributing_indices, args
     )
-    # print(f">>>>>> evaluating poisoned validation set")
-    # acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
-    #     val_poisoned_loader, backbone, linear, args
-    # )
-    # TODO: remove
-
-    exit()
+    print(f">>>>>> evaluating poisoned validation set")
+    acc1_p, _, conf_matrix_poisoned = validate_conf_matrix(
+        val_poisoned_loader, backbone, linear, contributing_indices, args
+    )
 
     if args.detect_trigger_channels:
         for k in args.channel_num:
@@ -797,6 +805,16 @@ def main_worker(args):
         #     pin_memory=True,
         # )
 
+        # poisoned train dataset D
+        if args.detect_trigger_channels:
+            poisoned_train_loader = torch.utils.data.DataLoader(
+                FileListDataset(args.poisoned_train_file, val_transform, ss_transform),
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=args.workers,
+                pin_memory=True,
+            )
+
         # clean val
         val_loader = torch.utils.data.DataLoader(
             FileListDataset(
@@ -930,6 +948,7 @@ def main_worker(args):
 
         generate_evalaution_results(
             args,
+            poisoned_train_loader,
             val_loader,
             val_poisoned_loader,
             backbone,
@@ -1187,10 +1206,6 @@ def find_trigger_channels(args, data_loader, backbone):
             :, :, -max(args.channel_num) :
         ]  # [bs, n_view, channel_num]
 
-        # TODO: remove later
-        with open(f"zz.npy", "wb") as f:
-            np.save(f, max_indices_at_channel.flatten())
-
         max_indices_at_channel = max_indices_at_channel.reshape(
             this_bs, -1
         )  # [bs, n_view*channel_num]
@@ -1211,8 +1226,6 @@ def find_trigger_channels(args, data_loader, backbone):
         #     f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
         # )
         # min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
-        # TODO: remove later
-        break
 
     all_entropies = np.array(all_entropies)
     all_entropies_indices = np.argsort(
@@ -1356,14 +1369,10 @@ def validate_conf_matrix(
     val_loader,
     backbone,
     linear,
+    contributing_indices,
     args,
 ):
-    # batch_time = AverageMeter("Time", ":6.3f")
-    # losses = AverageMeter("Loss", ":.4e")
-    # top5 = AverageMeter("Acc@5", ":6.2f")
-    # progress = ProgressMeter(
-    #     len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
-    # )
+
     if args.detect_trigger_channels:
         # initialize EVALUATION RESULTS dict
         conf_matrix_dict = {}
@@ -1371,22 +1380,14 @@ def validate_conf_matrix(
         for k in args.channel_num:
             conf_matrix_dict[k] = np.zeros((100, 100))
             top1_dict[k] = AverageMeter("Acc@1", ":6.2f")
-
-        contributing_indices = find_trigger_channels(args, val_loader, backbone)
     else:
-        conf_matrix = np.zeros(
-            (100, 100)
-        )  # TODO: [later]: for other dataset, this to be updated (THE ABOVE ONE TOO)
+        conf_matrix = np.zeros((100, 100))
         top1 = AverageMeter("Acc@1", ":6.2f")
 
     backbone.eval()
     linear.eval()
 
-    # create confusion matrix ROWS ground truth COLUMNS pred
-    # conf_matrix = np.zeros((1000, 1000))                # for ImageNet
-
     with torch.no_grad():
-        # end = time.time()
 
         for i, content in enumerate(val_loader):
             if args.detect_trigger_channels:
@@ -1416,40 +1417,7 @@ def validate_conf_matrix(
                 top1, conf_matrix = produces_evaluation_results(
                     images, output, target, linear, top1, conf_matrix
                 )
-                # output = linear(
-                #     output
-                # )  # shape:[bs, 100==#classes], value: probablity of each class
-                # # loss = F.cross_entropy(output, target)
 
-                # acc1, _ = accuracy(
-                #     output, target, topk=(1, 5)
-                # )  # each, shape: [1], value: acc
-
-                # # losses.update(loss.item(), images.size(0))
-                # top1.update(acc1[0], images.size(0))
-                # # top5.update(acc5[0], images.size(0))
-
-                # # # measure elapsed time
-                # # batch_time.update(time.time() - end)
-                # # end = time.time()
-
-                # # if i % args.print_freq == 0:
-                # #     logger.info(progress.display(i))
-
-                # _, pred = output.topk(
-                #     1, 1, True, True
-                # )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
-                # pred_numpy = pred.cpu().numpy()
-                # target_numpy = target.cpu().numpy()
-
-                # for elem in range(target.size(0)):
-                #     # update confusion matrix: for each GT class, what is the predicted class
-                #     conf_matrix[target_numpy[elem], int(pred_numpy[elem])] += 1
-
-        # # this should also be done with the ProgressMeter
-        # logger.info(
-        #     " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
-        # )
     if args.detect_trigger_channels:
         return top1_dict, None, conf_matrix_dict
     else:
