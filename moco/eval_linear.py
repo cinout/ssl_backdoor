@@ -777,7 +777,7 @@ def main_worker(args):
 
     just_resize_transform = transforms.Compose(
         [
-            transforms.Resize(224, 224),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             normalize,
         ]
