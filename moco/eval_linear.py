@@ -35,7 +35,7 @@ import numpy as np
 from moco.dataset import FileListDataset
 import moco.loader
 from resnet.mask_batchnorm import MaskBatchNorm2d
-
+from tqdm import tqdm
 
 torch.set_printoptions(threshold=10000)
 np.set_printoptions(threshold=10000)
@@ -1197,10 +1197,11 @@ def get_channels(arch):
 def find_trigger_channels(args, data_loader, backbone):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
+    is_poinsoned = []  # for all images in the dataset
     total_images = 0
 
-    for i, content in enumerate(data_loader):
-        (_, images, views, target, _) = content
+    for i, content in tqdm(enumerate(data_loader)):
+        (path, images, views, target, _) = content
         views = torch.cat(views, dim=0)
         views = views.to(device)
         vision_features = backbone(views)  # [bs*n_views, 512]
@@ -1253,11 +1254,7 @@ def find_trigger_channels(args, data_loader, backbone):
 
         all_entropies.extend(entropies)
         all_votes.append(max_indices_at_channel)
-
-        # print(
-        #     f">>>>> entropies of top-1 channel: mean is {np.mean(entropies):.2f}, std is {np.std(entropies):.2f}"
-        # )
-        # min_index = np.argmin(entropies)  # this sample is most likely to be poisoned
+        is_poinsoned.extend([int("SSL-Backdoor" in item) for item in path])
 
     all_entropies = np.array(all_entropies)
     all_entropies_indices = np.argsort(
@@ -1269,20 +1266,21 @@ def find_trigger_channels(args, data_loader, backbone):
     all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
     all_votes = all_votes[minority_indices]  # votes by minority, [minority_num, n_view]
 
+    is_poinsoned = np.array(is_poinsoned)  # [#dataset]
+    is_poinsoned = is_poinsoned[minority_indices]
+    poisoned_found = is_poinsoned.sum()
+    print(
+        f"total count of found poisoned images: {poisoned_found}/{is_poinsoned.shape[0]}={np.round(poisoned_found/is_poinsoned.shape[0]*100,2)}"
+    )
+
     # obtain trigger channels
     essential_indices = Counter(all_votes.flatten()).most_common(max(args.channel_num))
-
-    #  only consider the top-1 index
-    # print(
-    #     f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views}"
-    # )
-    # consider the top-channel_num indices
     print(
         f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
     )
 
     print(
-        f"lowest entropies are: {[ round(item,2) for item in all_entropies[minority_indices]]}"
+        f"lowest entropies are: {[round(item,2) for item in all_entropies[minority_indices]]}"
     )
     print(
         f"entropy mean is {np.mean(all_entropies):.2f}, std is {np.std(all_entropies):.2f}"
