@@ -626,8 +626,18 @@ def generate_evalaution_results(
             #     conf_matrix_poisoned[k],
             # )
     else:
-        # print(f"The accuracy is {acc1.avg}, FP on target class {args.target_class} is {conf_matrix_poisoned[:, args.target_class].sum()- conf_matrix_poisoned[args.target_class][args.target_class]}")
-        pass
+        clean_acc = acc1
+        fp_count = (
+            conf_matrix_poisoned[:, target].sum() - conf_matrix_poisoned[target][target]
+        )
+        asr = (
+            fp_count
+            / (conf_matrix_poisoned[:, :].sum() - conf_matrix_poisoned[target, :].sum())
+            * 100
+        )
+        print(
+            f"The accuracy is {clean_acc}, fp_count is {fp_count}, asr on target class {target} is {asr}"
+        )
 
         # np.save("{}/conf_matrix_clean.npy".format(args.save), conf_matrix_clean)
         # np.save("{}/conf_matrix_poisoned.npy".format(args.save), conf_matrix_poisoned)
