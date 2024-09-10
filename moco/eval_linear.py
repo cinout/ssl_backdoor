@@ -1209,10 +1209,9 @@ def find_trigger_channels(args, data_loader, backbone):
     total_images = 0
 
     for i, content in tqdm(enumerate(data_loader)):
-        (path, images, views, target, _) = content
-        print(len(views))
-        print(views[0].shape)
-        exit()
+        (path, images, views, target, _) = (
+            content  # views.len=num_views, each shape: [bs, 3, 224, 224]
+        )
         views = torch.cat(views, dim=0)
         views = views.to(device)
         vision_features = backbone(views)  # [bs*n_views, 512]
@@ -1240,10 +1239,8 @@ def find_trigger_channels(args, data_loader, backbone):
         )  # [bs*n_view, C], C are indices, sorted by value from low to high
         this_bs = int(total / args.num_views)
         total_images += this_bs
-        max_indices = max_indices.reshape(this_bs, args.num_views, C)  # [bs, n_view, C]
-
-        #  only consider the top-1 index
-        # max_indices_at_channel = max_indices[:, :, -1]  # [bs, n_view]
+        max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
+        max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
 
         #  consider the top-channel_num indices
         max_indices_at_channel = max_indices[
