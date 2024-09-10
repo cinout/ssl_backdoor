@@ -166,11 +166,10 @@ parser.add_argument(
 parser.add_argument("--eval_data", type=str, default="", help="eval identifier")
 
 # new experiments (for finding trigger channels)
-# TODO: update
 parser.add_argument(
     "--minority_criterion",
     type=str,
-    choices=["entropy", "ss_score"],
+    choices=["entropy", "ss_score", "ss_score_elements"],
     default="entropy",
     help="how to find minority (bd samples)",
 )
@@ -1211,6 +1210,9 @@ def find_trigger_channels(args, data_loader, backbone):
 
     for i, content in tqdm(enumerate(data_loader)):
         (path, images, views, target, _) = content
+        print(len(views))
+        print(views[0].shape)
+        exit()
         views = torch.cat(views, dim=0)
         views = views.to(device)
         vision_features = backbone(views)  # [bs*n_views, 512]
