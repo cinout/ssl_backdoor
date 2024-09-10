@@ -1252,6 +1252,7 @@ def find_trigger_channels(args, data_loader, backbone):
             entropy = np.exp(h)
             entropies.append(entropy)
 
+        # update lists
         all_entropies.extend(entropies)
         all_votes.append(max_indices_at_channel)
         is_poinsoned.extend([int("SSL-Backdoor" in item) for item in path])
@@ -1278,7 +1279,6 @@ def find_trigger_channels(args, data_loader, backbone):
     print(
         f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
     )
-
     print(
         f"lowest entropies are: {[round(item,2) for item in all_entropies[minority_indices]]}"
     )
