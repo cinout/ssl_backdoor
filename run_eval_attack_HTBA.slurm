@@ -41,7 +41,7 @@ python eval_linear.py \
     --weights ./HTBA_bs64_world4/HTBA_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/checkpoint_0199.pth.tar \
     --resume ./HTBA_bs64_world4/HTBA_bs64_world4/mocom0.999_contr1tau0.2_mlp_aug+_cos_b64_lr0.06_e120,160,200/linear/checkpoint_0199.pth.tar/checkpoint.pth.tar \
     \
-    --poisoned_train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
+    --poisoned_train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/dummy_debug.txt \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/val_poisoned/loc_random_loc-min_0.10_loc-max_0.90_alpha_0.00_width_50_filelist.txt \
     \
@@ -53,6 +53,7 @@ python eval_linear.py \
     --detect_trigger_channels \
     --channel_num 1 2 4 8 12 16 20 24 \
     --num_views 64 \
+    # --poisoned_train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     # --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
 
 ##Log this job's resource usage stats###

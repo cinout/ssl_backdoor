@@ -21,7 +21,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.nn.functional as F
-
+from sklearn.metrics import roc_auc_score
 from eval_utils import (
     AverageMeter,
     ProgressMeter,
@@ -571,6 +571,7 @@ def generate_evalaution_results(
     imagenet_metadata_dict,
     class_dir_list,
 ):
+    contributing_indices = None
     if args.detect_trigger_channels:
         contributing_indices = find_trigger_channels(
             args, poisoned_train_loader, backbone
@@ -852,10 +853,10 @@ def main_worker(args):
             FileListDataset(
                 args.val_file,
                 val_transform,
-                ss_transform if args.detect_trigger_channels else None,
+                # ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=args.workers,
             pin_memory=True,
         )
@@ -865,10 +866,10 @@ def main_worker(args):
             FileListDataset(
                 args.val_poisoned_file,
                 transforms.Compose([transforms.ToTensor(), normalize]),
-                ss_transform if args.detect_trigger_channels else None,
+                # ss_transform if args.detect_trigger_channels else None,
             ),
             batch_size=args.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=args.workers,
             pin_memory=True,
         )
@@ -1257,7 +1258,11 @@ def find_trigger_channels(args, data_loader, backbone):
         all_votes.append(max_indices_at_channel)
         is_poinsoned.extend([int("SSL-Backdoor" in item) for item in path])
 
-    all_entropies = np.array(all_entropies)
+    all_entropies = np.array(all_entropies)  # poisoned image should have lower entropy
+    is_poinsoned = np.array(is_poinsoned)  # [#dataset]
+    score = roc_auc_score(y_true=is_poinsoned, y_score=-all_entropies)
+    print(f"the AUROC score is: {score*100}")
+
     all_entropies_indices = np.argsort(
         all_entropies
     )  # indices, sorted from low to high by entropy value
@@ -1267,7 +1272,6 @@ def find_trigger_channels(args, data_loader, backbone):
     all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
     all_votes = all_votes[minority_indices]  # votes by minority, [minority_num, n_view]
 
-    is_poinsoned = np.array(is_poinsoned)  # [#dataset]
     is_poinsoned = is_poinsoned[minority_indices]
     poisoned_found = is_poinsoned.sum()
     print(
@@ -1420,10 +1424,10 @@ def validate_conf_matrix(
     with torch.no_grad():
 
         for i, content in enumerate(val_loader):
-            if args.detect_trigger_channels:
-                (_, images, views, target, _) = content
-            else:
-                (_, images, target, _) = content
+            # if args.detect_trigger_channels:
+            #     (_, images, views, target, _) = content
+            # else:
+            (_, images, target, _) = content
 
             images = images.to(device)
             target = target.to(device)  # shape:[bs], value: GT class index 0-99
