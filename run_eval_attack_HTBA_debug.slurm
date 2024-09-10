@@ -11,7 +11,7 @@
 #SBATCH --qos=gpgpudeeplearn
 #SBATCH --constraint=dlg5|dlg6
 
-#SBATCH --job-name="htba"
+#SBATCH --job-name="htba_d"
 #SBATCH --account=punim1623
 #SBATCH --time=0-02:00:00
 
