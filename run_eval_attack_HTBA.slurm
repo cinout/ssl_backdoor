@@ -54,8 +54,8 @@ python eval_linear.py \
     --channel_num 1 2 3 4 6 8 10 12 14 16 20 24 \
     --num_views 64 \
     \
-    --minority_criterion entropy \
-    # --minority_criterion ss_score \
+    --minority_criterion ss_score \
+    # --minority_criterion entropy \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
