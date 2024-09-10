@@ -768,7 +768,7 @@ def main_worker(args):
 
     train_transform = transforms.Compose(
         [
-            transforms.RandomResizedCrop(224),
+            transforms.RandomResizedCrop((224, 224)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
@@ -777,7 +777,7 @@ def main_worker(args):
 
     just_resize_transform = transforms.Compose(
         [
-            transforms.Resize(224),
+            transforms.Resize(224, 224),
             transforms.ToTensor(),
             normalize,
         ]
@@ -786,7 +786,7 @@ def main_worker(args):
     val_transform = transforms.Compose(
         [
             transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.CenterCrop((224, 224)),
             transforms.ToTensor(),
             normalize,
         ]
