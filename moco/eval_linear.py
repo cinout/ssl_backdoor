@@ -1275,6 +1275,21 @@ def find_trigger_channels(args, data_loader, backbone):
             corrs = corrs.reshape(args.num_views, -1)  # [n_views, bs]
             ss_scores = np.max(corrs, axis=0).tolist()  # [bs]
             entropies.extend(ss_scores)
+        elif args.minority_criterion == "ss_score_elements":
+            num_interested_channels = 1  # TODO:  changeale
+            top_channel_votes = max_indices[
+                :, :, -num_interested_channels:
+            ].flatten()  # [bs*n_view*num_interested_channels]
+            votes_of_batch = Counter(top_channel_votes).most_common(
+                num_interested_channels
+            )
+            chosen_channels = [idx for (idx, occ_count) in votes_of_batch]
+            scores = elementwise[:, chosen_channels]
+            scores = np.sum(scores, axis=1)  # [bs*n_view, ]
+
+            scores = scores.reshape(args.num_views, -1)  # [ bs, n_views]
+            ss_scores = np.max(scores, axis=0).tolist()  # [bs]
+            entropies.extend(ss_scores)
 
         # update lists
         all_entropies.extend(entropies)
