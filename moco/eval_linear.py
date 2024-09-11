@@ -1215,7 +1215,7 @@ def get_channels(arch):
 def find_trigger_channels(args, data_loader, backbone):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
-    is_poinsoned = []  # for all images in the dataset
+    is_poisoned = []  # for all images in the dataset
     total_images = 0
 
     for i, content in tqdm(enumerate(data_loader)):
@@ -1294,11 +1294,11 @@ def find_trigger_channels(args, data_loader, backbone):
         # update lists
         all_entropies.extend(entropies)
         all_votes.append(max_indices_at_channel)
-        is_poinsoned.extend([int("SSL-Backdoor" in item) for item in path])
+        is_poisoned.extend([int("SSL-Backdoor" in item) for item in path])
 
     all_entropies = np.array(all_entropies)  # poisoned image should have lower entropy
-    is_poinsoned = np.array(is_poinsoned)  # [#dataset]
-    score = roc_auc_score(y_true=is_poinsoned, y_score=-all_entropies)
+    is_poisoned = np.array(is_poisoned)  # [#dataset]
+    score = roc_auc_score(y_true=is_poisoned, y_score=-all_entropies)
     print(f"the AUROC score is: {score*100}")
 
     all_entropies_indices = np.argsort(
@@ -1307,13 +1307,32 @@ def find_trigger_channels(args, data_loader, backbone):
     minority_num = int(total_images * args.minority_percent)
     minority_indices = all_entropies_indices[:minority_num]
 
-    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view]
-    all_votes = all_votes[minority_indices]  # votes by minority, [minority_num, n_view]
+    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view*channel_num]
 
-    is_poinsoned = is_poinsoned[minority_indices]
-    poisoned_found = is_poinsoned.sum()
+    # TODO: remove, for debug only
+    clean_indices = np.nonzero(is_poisoned == 0)[0]
+    poison_indices = np.nonzero(is_poisoned == 1)[0]
+
+    clean_votes = all_votes[clean_indices]  # [#clean, n_view*channel_num]
+    poison_votes = all_votes[poison_indices]
+
+    with open(f"../dataset_imagenet100_HTBA_train_clean_votes.npy", "wb") as f:
+        np.save(f, clean_votes)
+    with open(f"../dataset_imagenet100_HTBA_train_poison_votes.npy", "wb") as f:
+        np.save(f, poison_votes)
+
+    exit()
+
+    # TODO: end of debug
+
+    all_votes = all_votes[
+        minority_indices
+    ]  # votes by minority, [minority_num, n_view*channel_num]
+
+    is_poisoned = is_poisoned[minority_indices]
+    poisoned_found = is_poisoned.sum()
     print(
-        f"total count of found poisoned images: {poisoned_found}/{is_poinsoned.shape[0]}={np.round(poisoned_found/is_poinsoned.shape[0]*100,2)}"
+        f"total count of found poisoned images: {poisoned_found}/{is_poisoned.shape[0]}={np.round(poisoned_found/is_poisoned.shape[0]*100,2)}"
     )
 
     # obtain trigger channels
