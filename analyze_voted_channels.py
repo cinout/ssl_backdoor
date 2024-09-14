@@ -7,8 +7,11 @@ from torch.utils.data import DataLoader, TensorDataset
 import copy
 from collections import Counter
 
-clean_file = "dataset_imagenet100_HTBA_train_clean_votes.npy"
-poison_file = "dataset_imagenet100_HTBA_train_poison_votes.npy"
+# clean_file = "dataset_imagenet100_HTBA_train_clean_votes.npy"
+# poison_file = "dataset_imagenet100_HTBA_train_poison_votes.npy"
+# [(1, 30), (3, 35), (5, 11), (6, 3), (8, 25), (9, 29), (10, 0), (11, 7), (14, 9), (19, 22), (20, 41), (21, 39), (24, 8), (26, 1), (27, 14), (32, 49), (34, 2), (36, 24), (40, 13), (42, 48), (44, 4), (46, 38), (47, 10), (48, 21)]
+
+# [(5, 11), (6, 3), (10, 0), (11, 7), (14, 9), (19, 22)]
 
 # clean_file = "dataset_imagenet100_train_clean_votes.npy"
 # poison_file = "dataset_imagenet100_train_poison_votes.npy"

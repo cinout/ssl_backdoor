@@ -189,6 +189,16 @@ parser.add_argument(
     type=float,
     default=0.005,
 )
+parser.add_argument(
+    "--minority_percent_lower_bound",
+    type=float,
+    default=0.005,
+)
+parser.add_argument(
+    "--minority_percent_upper_bound",
+    type=float,
+    default=0.015,
+)
 
 parser.add_argument(
     "--num_views",
@@ -1304,26 +1314,32 @@ def find_trigger_channels(args, data_loader, backbone):
     all_entropies_indices = np.argsort(
         all_entropies
     )  # indices, sorted from low to high by entropy value
-    minority_num = int(total_images * args.minority_percent)
-    minority_indices = all_entropies_indices[:minority_num]
+
+    # minority_num = int(total_images * args.minority_percent)
+    minority_lb = int(total_images * args.minority_percent_lower_bound)
+    minority_ub = int(total_images * args.minority_percent_upper_bound)
+    minority_num = minority_ub - minority_lb
+
+    # minority_indices = all_entropies_indices[:minority_num]
+    minority_indices = all_entropies_indices[minority_lb:minority_ub]
 
     all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view*channel_num]
 
-    # TODO: remove, for debug only
-    clean_indices = np.nonzero(is_poisoned == 0)[0]
-    poison_indices = np.nonzero(is_poisoned == 1)[0]
+    # # TODO: remove, for debug only
+    # clean_indices = np.nonzero(is_poisoned == 0)[0]
+    # poison_indices = np.nonzero(is_poisoned == 1)[0]
 
-    clean_votes = all_votes[clean_indices]  # [#clean, n_view*channel_num]
-    poison_votes = all_votes[poison_indices]
+    # clean_votes = all_votes[clean_indices]  # [#clean, n_view*channel_num]
+    # poison_votes = all_votes[poison_indices]
 
-    with open(f"../dataset_imagenet100_HTBA_train_clean_votes.npy", "wb") as f:
-        np.save(f, clean_votes)
-    with open(f"../dataset_imagenet100_HTBA_train_poison_votes.npy", "wb") as f:
-        np.save(f, poison_votes)
+    # with open(f"../dataset_imagenet100_HTBA_train_clean_votes.npy", "wb") as f:
+    #     np.save(f, clean_votes)
+    # with open(f"../dataset_imagenet100_HTBA_train_poison_votes.npy", "wb") as f:
+    #     np.save(f, poison_votes)
 
-    exit()
+    # exit()
 
-    # TODO: end of debug
+    # # TODO: end of debug
 
     all_votes = all_votes[
         minority_indices
