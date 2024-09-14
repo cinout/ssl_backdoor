@@ -581,6 +581,7 @@ def save_csv_file(
 def generate_evalaution_results(
     args,
     poisoned_train_loader,
+    probe_loader,
     val_loader,
     val_poisoned_loader,
     backbone,
@@ -591,7 +592,7 @@ def generate_evalaution_results(
     contributing_indices = None
     if args.detect_trigger_channels:
         contributing_indices = find_trigger_channels(
-            args, poisoned_train_loader, backbone
+            args, poisoned_train_loader, probe_loader, backbone
         )
 
     print(f">>>>>> evaluating clean validation set")
@@ -874,6 +875,13 @@ def main_worker(args):
                 num_workers=args.workers,
                 pin_memory=True,
             )
+            probe_loader = torch.utils.data.DataLoader(
+                FileListDataset(args.probe_file, just_resize_transform, ss_transform),
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=args.workers,
+                pin_memory=True,
+            )
 
         # clean val
         val_loader = torch.utils.data.DataLoader(
@@ -1009,6 +1017,7 @@ def main_worker(args):
         generate_evalaution_results(
             args,
             poisoned_train_loader,
+            probe_loader,
             val_loader,
             val_poisoned_loader,
             backbone,
@@ -1222,11 +1231,56 @@ def get_channels(arch):
     return c
 
 
-def find_trigger_channels(args, data_loader, backbone):
+def find_trigger_channels(args, data_loader, probe_loader, backbone):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
     is_poisoned = []  # for all images in the dataset
     total_images = 0
+
+    # TODO: add this for probing
+    all_probe_votes = []
+    for i, content in tqdm(enumerate(probe_loader)):
+        (path, images, views, target, _) = (
+            content  # views.len=num_views, each shape: [bs, 3, 224, 224]
+        )
+        views = torch.cat(views, dim=0)
+        views = views.to(device)
+        vision_features = backbone(views)  # [bs*n_views, 512]
+        total, C = vision_features.shape
+        vision_features = vision_features.detach().cpu().numpy()
+        u, s, v = np.linalg.svd(
+            vision_features - np.mean(vision_features, axis=0, keepdims=True),
+            full_matrices=False,
+        )
+
+        # get top eigenvector
+        eig_for_indexing = v[0:1]  # [1, C]
+
+        # adjust direction (sign)
+        corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
+        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+        elementwise = (
+            eig_for_indexing * vision_features * coeff_adjust
+        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+
+        # get contributing indices sorted from low to high
+        max_indices = np.argsort(
+            elementwise, axis=1
+        )  # [bs*n_view, C], C are indices, sorted by value from low to high
+        this_bs = int(total / args.num_views)
+        max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
+        max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
+
+        #  consider the top-channel_num indices
+        max_indices_at_channel = max_indices[
+            :, :, -max(args.channel_num) :
+        ]  # [bs, n_view, channel_num]
+
+        max_indices_at_channel = max_indices_at_channel.reshape(
+            this_bs, -1
+        )  # [bs, n_view*channel_num]
+        all_probe_votes.append(max_indices_at_channel)
 
     for i, content in tqdm(enumerate(data_loader)):
         (path, images, views, target, _) = (
@@ -1352,7 +1406,9 @@ def find_trigger_channels(args, data_loader, backbone):
     )
 
     # obtain trigger channels
-    essential_indices = Counter(all_votes.flatten()).most_common(max(args.channel_num))
+    essential_indices = Counter(all_votes.flatten()).most_common(
+        2 * max(args.channel_num)
+    )  # TODO: note that we 2*
     print(
         f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
     )
@@ -1362,9 +1418,32 @@ def find_trigger_channels(args, data_loader, backbone):
     print(
         f"entropy mean is {np.mean(all_entropies):.2f}, std is {np.std(all_entropies):.2f}"
     )
-    essential_indices = torch.tensor(
-        [idx for (idx, occ_count) in essential_indices]
-    )  # remove count
+    essential_indices = [idx for (idx, occ_count) in essential_indices]
+
+    # TODO: remove all_probe_votes from all_votes
+    all_probe_votes = np.concatenate(
+        all_probe_votes, axis=0
+    )  # [#dataset, n_view*channel_num]
+    probe_essential_indices = Counter(all_probe_votes.flatten()).most_common(
+        max(args.channel_num)
+    )
+    probe_essential_indices = [
+        idx for (idx, occ_count) in probe_essential_indices
+    ]  # a list of channel indices
+
+    print(f"probe_essential_indices are: {probe_essential_indices}")
+
+    essential_indices = [
+        item for item in essential_indices if item not in probe_essential_indices
+    ]
+
+    essential_indices = torch.tensor(essential_indices[: max(args.channel_num)])
+
+    print(
+        f"after removing probe channels, essential_indices are: {probe_essential_indices}"
+    )
+
+    # TODO: end of removing
     return essential_indices
 
 

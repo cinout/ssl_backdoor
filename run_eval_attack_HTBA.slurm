@@ -44,6 +44,7 @@ python eval_linear.py \
     --poisoned_train_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/train/loc_random_loc-min_0.25_loc-max_0.75_alpha_0.00_width_50_rate_0.50_targeted_True_filelist.txt \
     --val_file ../dataset/imagenet100_val_clean_filelist.txt \
     --val_poisoned_file ../poison-generation/data/HTBA_trigger_10_targeted_n02106550/val_poisoned/loc_random_loc-min_0.10_loc-max_0.90_alpha_0.00_width_50_filelist.txt \
+    --probe_file ../dataset/imagenet100_train_clean_filelist_0.01_balanced_sd20.txt \
     \
     --target_class 26 \
     --batch-size 128 \
