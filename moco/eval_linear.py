@@ -197,7 +197,7 @@ parser.add_argument(
 parser.add_argument(
     "--minority_percent_upper_bound",
     type=float,
-    default=0.015,
+    default=0.020,
 )
 
 parser.add_argument(
