@@ -151,8 +151,12 @@ parser.add_argument(
 parser.add_argument(
     "--poisoned_train_file",
     type=str,
-    required=True,
     help="file containing original poisoned training image paths",
+)
+parser.add_argument(
+    "--probe_file",
+    type=str,
+    help="1 percent ref",
 )
 parser.add_argument(
     "--val_file", type=str, required=True, help="file containing training image paths"
@@ -1439,9 +1443,7 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
 
     essential_indices = torch.tensor(essential_indices[: max(args.channel_num)])
 
-    print(
-        f"after removing probe channels, essential_indices are: {probe_essential_indices}"
-    )
+    print(f"after removing probe channels, essential_indices are: {essential_indices}")
 
     # TODO: end of removing
     return essential_indices
