@@ -1257,6 +1257,7 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
             vision_features = vision_features.reshape(
                 args.num_views, -1, vision_features.shape[-1]
             )
+            vision_features = torch.transpose(vision_features, 0, 1)
 
             with open(f"dataset_htba_imagenet100_poi_{poi_count}.t", "wb") as f:
                 torch.save(vision_features, f)
@@ -1274,6 +1275,8 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
             vision_features = vision_features.reshape(
                 args.num_views, -1, vision_features.shape[-1]
             )
+            vision_features = torch.transpose(vision_features, 0, 1)
+
             with open(f"dataset_htba_imagenet100_clean_{clean_count}.t", "wb") as f:
                 torch.save(vision_features, f)
 
