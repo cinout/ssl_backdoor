@@ -1236,217 +1236,48 @@ def get_channels(arch):
 
 
 def find_trigger_channels(args, data_loader, probe_loader, backbone):
-    all_entropies = []  # for all images in the dataset
-    all_votes = []  # for all images in the dataset
-    is_poisoned = []  # for all images in the dataset
-    total_images = 0
 
-    # TODO: add this for probing
-    all_probe_votes = []
-    for i, content in tqdm(enumerate(probe_loader)):
-        (path, images, views, target, _) = (
-            content  # views.len=num_views, each shape: [bs, 3, 224, 224]
-        )
-        views = torch.cat(views, dim=0)
-        views = views.to(device)
-        vision_features = backbone(views)  # [bs*n_views, 512]
-        total, C = vision_features.shape
-        vision_features = vision_features.detach().cpu().numpy()
-        u, s, v = np.linalg.svd(
-            vision_features - np.mean(vision_features, axis=0, keepdims=True),
-            full_matrices=False,
-        )
-
-        # get top eigenvector
-        eig_for_indexing = v[0:1]  # [1, C]
-
-        # adjust direction (sign)
-        corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
-        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
-        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
-        elementwise = (
-            eig_for_indexing * vision_features * coeff_adjust
-        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
-
-        # get contributing indices sorted from low to high
-        max_indices = np.argsort(
-            elementwise, axis=1
-        )  # [bs*n_view, C], C are indices, sorted by value from low to high
-        this_bs = int(total / args.num_views)
-        max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
-        max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
-
-        #  consider the top-channel_num indices
-        max_indices_at_channel = max_indices[
-            :, :, -max(args.channel_num) :
-        ]  # [bs, n_view, channel_num]
-
-        max_indices_at_channel = max_indices_at_channel.reshape(
-            this_bs, -1
-        )  # [bs, n_view*channel_num]
-        all_probe_votes.append(max_indices_at_channel)
+    clean_count = 0
+    poi_count = 0
 
     for i, content in tqdm(enumerate(data_loader)):
-        (path, images, views, target, _) = (
-            content  # views.len=num_views, each shape: [bs, 3, 224, 224]
-        )
-        views = torch.cat(views, dim=0)
-        views = views.to(device)
-        vision_features = backbone(views)  # [bs*n_views, 512]
-        total, C = vision_features.shape
-        vision_features = vision_features.detach().cpu().numpy()
-        u, s, v = np.linalg.svd(
-            vision_features - np.mean(vision_features, axis=0, keepdims=True),
-            full_matrices=False,
-        )
+        if clean_count == 4 and poi_count == 4:
+            break
 
-        # get top eigenvector
-        eig_for_indexing = v[0:1]  # [1, C]
+        (path, images, views, target, _) = content
+        is_batch_poisoned = torch.tensor([int("SSL-Backdoor" in item) for item in path])
 
-        # adjust direction (sign)
-        corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
-        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
-        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
-        elementwise = (
-            eig_for_indexing * vision_features * coeff_adjust
-        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+        if 1 in is_batch_poisoned and poi_count < 4:
+            poi_count += 1
+            # contain poi
 
-        # get contributing indices sorted from low to high
-        max_indices = np.argsort(
-            elementwise, axis=1
-        )  # [bs*n_view, C], C are indices, sorted by value from low to high
-        this_bs = int(total / args.num_views)
-        total_images += this_bs
-        max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
-        max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
-
-        #  consider the top-channel_num indices
-        max_indices_at_channel = max_indices[
-            :, :, -max(args.channel_num) :
-        ]  # [bs, n_view, channel_num]
-
-        max_indices_at_channel = max_indices_at_channel.reshape(
-            this_bs, -1
-        )  # [bs, n_view*channel_num]
-
-        entropies = []  # bs elements
-        if args.minority_criterion == "entropy":
-            for votes in max_indices_at_channel:  # for each original image
-                votes_counter = Counter(votes).most_common()
-                counts = np.array([c for (name, c) in votes_counter])
-                p = counts / counts.sum()
-                h = -np.sum(p * np.log(p))
-                entropy = np.exp(h)
-                entropies.append(entropy)
-        elif args.minority_criterion == "ss_score":
-            corrs = np.abs(corrs)
-            corrs = corrs.reshape(args.num_views, -1)  # [n_views, bs]
-            ss_scores = -1 * np.max(corrs, axis=0)  # [bs]
-            entropies.extend(ss_scores.tolist())
-        elif args.minority_criterion == "ss_score_elements":
-            num_interested_channels = 1  # TODO:  changeale
-            top_channel_votes = max_indices[
-                :, :, -num_interested_channels:
-            ].flatten()  # [bs*n_view*num_interested_channels]
-            votes_of_batch = Counter(top_channel_votes).most_common(
-                num_interested_channels
+            views = torch.cat(views, dim=0)
+            views = views.to(device)
+            vision_features = backbone(views)  # [bs*n_views, 512]
+            vision_features = vision_features.reshape(
+                args.num_views, -1, vision_features.shape[-1]
             )
-            chosen_channels = [idx for (idx, occ_count) in votes_of_batch]
-            scores = elementwise[:, chosen_channels]
-            scores = np.sum(scores, axis=1)  # [bs*n_view, ]
 
-            scores = scores.reshape(args.num_views, -1)  # [ bs, n_views]
-            ss_scores = -1 * np.max(scores, axis=0)  # [bs]
-            entropies.extend(ss_scores.tolist())
+            with open(f"dataset_htba_{args.dataset}_poi_{poi_count}.t", "wb") as f:
+                torch.save(vision_features, f)
+            with open(
+                f"dataset_htba_{args.dataset}_poi_{poi_count}_position.t", "wb"
+            ) as f:
+                torch.save(is_batch_poisoned, f)
 
-        # update lists
-        all_entropies.extend(entropies)
-        all_votes.append(max_indices_at_channel)
-        is_poisoned.extend([int("SSL-Backdoor" in item) for item in path])
+        if 1 not in is_batch_poisoned and clean_count < 4:
+            clean_count += 1
+            # all clean (shuffled)
+            views = torch.cat(views, dim=0)
+            views = views.to(device)
+            vision_features = backbone(views)  # [bs*n_views, 512]
+            vision_features = vision_features.reshape(
+                args.num_views, -1, vision_features.shape[-1]
+            )
+            with open(f"dataset_htba_{args.dataset}_clean_{clean_count}.t", "wb") as f:
+                torch.save(vision_features, f)
 
-    all_entropies = np.array(all_entropies)  # poisoned image should have lower entropy
-    is_poisoned = np.array(is_poisoned)  # [#dataset]
-    score = roc_auc_score(y_true=is_poisoned, y_score=-all_entropies)
-    print(f"the AUROC score is: {score*100}")
-
-    all_entropies_indices = np.argsort(
-        all_entropies
-    )  # indices, sorted from low to high by entropy value
-
-    # minority_num = int(total_images * args.minority_percent)
-    minority_lb = int(total_images * args.minority_percent_lower_bound)
-    minority_ub = int(total_images * args.minority_percent_upper_bound)
-    minority_num = minority_ub - minority_lb
-
-    # minority_indices = all_entropies_indices[:minority_num]
-    minority_indices = all_entropies_indices[minority_lb:minority_ub]
-
-    all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view*channel_num]
-
-    # # TODO: remove, for debug only
-    # clean_indices = np.nonzero(is_poisoned == 0)[0]
-    # poison_indices = np.nonzero(is_poisoned == 1)[0]
-
-    # clean_votes = all_votes[clean_indices]  # [#clean, n_view*channel_num]
-    # poison_votes = all_votes[poison_indices]
-
-    # with open(f"../dataset_imagenet100_HTBA_train_clean_votes.npy", "wb") as f:
-    #     np.save(f, clean_votes)
-    # with open(f"../dataset_imagenet100_HTBA_train_poison_votes.npy", "wb") as f:
-    #     np.save(f, poison_votes)
-
-    # exit()
-
-    # # TODO: end of debug
-
-    all_votes = all_votes[
-        minority_indices
-    ]  # votes by minority, [minority_num, n_view*channel_num]
-
-    is_poisoned = is_poisoned[minority_indices]
-    poisoned_found = is_poisoned.sum()
-    print(
-        f"total count of found poisoned images: {poisoned_found}/{is_poisoned.shape[0]}={np.round(poisoned_found/is_poisoned.shape[0]*100,2)}"
-    )
-
-    # obtain trigger channels
-    essential_indices = Counter(all_votes.flatten()).most_common(
-        2 * max(args.channel_num)
-    )  # TODO: note that we 2*
-    print(
-        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
-    )
-    print(
-        f"lowest entropies are: {[round(item,2) for item in all_entropies[minority_indices]]}"
-    )
-    print(
-        f"entropy mean is {np.mean(all_entropies):.2f}, std is {np.std(all_entropies):.2f}"
-    )
-    essential_indices = [idx for (idx, occ_count) in essential_indices]
-
-    # TODO: remove all_probe_votes from all_votes
-    all_probe_votes = np.concatenate(
-        all_probe_votes, axis=0
-    )  # [#dataset, n_view*channel_num]
-    probe_essential_indices = Counter(all_probe_votes.flatten()).most_common(
-        max(args.channel_num)
-    )
-    probe_essential_indices = [
-        idx for (idx, occ_count) in probe_essential_indices
-    ]  # a list of channel indices
-
-    print(f"probe_essential_indices are: {probe_essential_indices}")
-
-    essential_indices = [
-        item for item in essential_indices if item not in probe_essential_indices
-    ]
-
-    essential_indices = torch.tensor(essential_indices[: max(args.channel_num)])
-
-    print(f"after removing probe channels, essential_indices are: {essential_indices}")
-
-    # TODO: end of removing
-    return essential_indices
+    exit()
 
 
 def train(train_loader, backbone, linear, optimizer, epoch, args):

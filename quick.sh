@@ -1,3 +1,3 @@
 git add .
 git commit -m "update"
-git push origin brandnewvote
+git push origin analyze
