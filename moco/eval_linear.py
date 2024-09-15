@@ -1258,10 +1258,10 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
                 args.num_views, -1, vision_features.shape[-1]
             )
 
-            with open(f"dataset_htba_{args.dataset}_poi_{poi_count}.t", "wb") as f:
+            with open(f"dataset_htba_imagenet100_poi_{poi_count}.t", "wb") as f:
                 torch.save(vision_features, f)
             with open(
-                f"dataset_htba_{args.dataset}_poi_{poi_count}_position.t", "wb"
+                f"dataset_htba_imagenet100_poi_{poi_count}_position.t", "wb"
             ) as f:
                 torch.save(is_batch_poisoned, f)
 
@@ -1274,7 +1274,7 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
             vision_features = vision_features.reshape(
                 args.num_views, -1, vision_features.shape[-1]
             )
-            with open(f"dataset_htba_{args.dataset}_clean_{clean_count}.t", "wb") as f:
+            with open(f"dataset_htba_imagenet100_clean_{clean_count}.t", "wb") as f:
                 torch.save(vision_features, f)
 
     exit()
