@@ -1299,7 +1299,7 @@ def find_trigger_channels(
 
     if args.use_frequency_detector:
         all_frequencies = []  # for all images in the dataset
-        freq_detector = FrequencyDetector(height=args.image_size, width=args.image_size)
+        freq_detector = FrequencyDetector(height=224, width=224)
         freq_detector = freq_detector.to(device)
         if args.pretrained_frequency_model == "":
             # train from scratch
