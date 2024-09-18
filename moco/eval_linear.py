@@ -36,6 +36,7 @@ from moco.dataset import FileListDataset
 import moco.loader
 from resnet.mask_batchnorm import MaskBatchNorm2d
 from tqdm import tqdm
+from frequency_detector import FrequencyDetector, dct2, patching_train
 
 torch.set_printoptions(threshold=10000)
 np.set_printoptions(threshold=10000)
@@ -286,8 +287,28 @@ parser.add_argument(
     help="poisoned class",
 )
 
+# TODO: check if these to be added to slurm
+parser.add_argument(
+    "--pretrained_frequency_model",
+    type=str,
+    default="",
+    help="path for pretrained frequency detector",
+)
+parser.add_argument("--frequency_detector_epochs", default=500, type=int)
+parser.add_argument(
+    "--ignore_probe_channels",
+    action="store_true",
+    help="ignore channels from clean probe dataset",
+)
+parser.add_argument(
+    "--use_frequency_detector",
+    action="store_true",
+    help="use_frequency_detector to detect BD samples",
+)
 
 best_acc1 = 0
+
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
 def produces_evaluation_results(images, output, target, linear, top1, conf_matrix):
@@ -586,6 +607,7 @@ def generate_evalaution_results(
     args,
     poisoned_train_loader,
     probe_loader,
+    train_probe_freq_detector_loader,
     val_loader,
     val_poisoned_loader,
     backbone,
@@ -596,7 +618,11 @@ def generate_evalaution_results(
     contributing_indices = None
     if args.detect_trigger_channels:
         contributing_indices = find_trigger_channels(
-            args, poisoned_train_loader, probe_loader, backbone
+            args,
+            poisoned_train_loader,
+            probe_loader,
+            train_probe_freq_detector_loader,
+            backbone,
         )
 
     print(f">>>>>> evaluating clean validation set")
@@ -777,9 +803,6 @@ def main_worker(args):
     """
 
     # Data loading code
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-    )
 
     train_transform = transforms.Compose(
         [
@@ -882,6 +905,24 @@ def main_worker(args):
             probe_loader = torch.utils.data.DataLoader(
                 FileListDataset(args.probe_file, just_resize_transform, ss_transform),
                 batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=args.workers,
+                pin_memory=True,
+            )
+
+        train_probe_freq_detector_loader = None
+        if args.use_frequency_detector:
+            train_probe_freq_detector_loader = torch.utils.data.DataLoader(
+                FileListDataset(
+                    args.probe_file,
+                    transforms.Compose(
+                        [
+                            transforms.Resize((224, 224)),
+                            transforms.ToTensor(),
+                        ]
+                    ),
+                ),
+                batch_size=64,
                 shuffle=True,
                 num_workers=args.workers,
                 pin_memory=True,
@@ -1022,6 +1063,7 @@ def main_worker(args):
             args,
             poisoned_train_loader,
             probe_loader,
+            train_probe_freq_detector_loader,
             val_loader,
             val_poisoned_loader,
             backbone,
@@ -1235,56 +1277,149 @@ def get_channels(arch):
     return c
 
 
-def find_trigger_channels(args, data_loader, probe_loader, backbone):
+invTrans = transforms.Compose(
+    [
+        transforms.Normalize(
+            mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+        ),
+        transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
+    ]
+)
+
+
+def find_trigger_channels(
+    args, data_loader, probe_loader, train_probe_freq_detector_loader, backbone
+):
     all_entropies = []  # for all images in the dataset
     all_votes = []  # for all images in the dataset
     is_poisoned = []  # for all images in the dataset
+
     total_images = 0
 
-    # TODO: add this for probing
-    all_probe_votes = []
-    for i, content in tqdm(enumerate(probe_loader)):
-        (path, images, views, target, _) = (
-            content  # views.len=num_views, each shape: [bs, 3, 224, 224]
-        )
-        views = torch.cat(views, dim=0)
-        views = views.to(device)
-        vision_features = backbone(views)  # [bs*n_views, 512]
-        total, C = vision_features.shape
-        vision_features = vision_features.detach().cpu().numpy()
-        u, s, v = np.linalg.svd(
-            vision_features - np.mean(vision_features, axis=0, keepdims=True),
-            full_matrices=False,
-        )
+    if args.use_frequency_detector:
+        all_frequencies = []  # for all images in the dataset
+        freq_detector = FrequencyDetector(height=args.image_size, width=args.image_size)
+        freq_detector = freq_detector.to(device)
+        if args.pretrained_frequency_model == "":
+            # train from scratch
+            optimizer = torch.optim.Adadelta(
+                freq_detector.parameters(), lr=0.05, weight_decay=1e-4
+            )
+            criterion = nn.CrossEntropyLoss()
+            freq_detector.train()
+            for epoch in range(args.frequency_detector_epochs):
+                for content in train_probe_freq_detector_loader:
+                    # prepare data in this batch
+                    (_, images_clean, _, _) = content
 
-        # get top eigenvector
-        eig_for_indexing = v[0:1]  # [1, C]
+                    images_clean = images_clean.to(device)  # [bs, c, h, w]
+                    images_clean = torch.permute(images_clean, (0, 2, 3, 1))
+                    images_clean = np.array(
+                        images_clean.cpu(), dtype=np.float32
+                    )  # shape: [bs, 32, 32, 3]; value range: [0, 1]
 
-        # adjust direction (sign)
-        corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
-        coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
-        coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
-        elementwise = (
-            eig_for_indexing * vision_features * coeff_adjust
-        )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+                    images_poi = np.zeros_like(images_clean)
+                    for i in range(images_clean.shape[0]):
+                        images_poi[i] = patching_train(
+                            images_clean[i], images_clean, 224
+                        )
 
-        # get contributing indices sorted from low to high
-        max_indices = np.argsort(
-            elementwise, axis=1
-        )  # [bs*n_view, C], C are indices, sorted by value from low to high
-        this_bs = int(total / args.num_views)
-        max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
-        max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
+                    images = np.concatenate(
+                        [images_clean, images_poi], axis=0
+                    )  # shape: [2*bs, 32, 32, 3]; value range: [0, 1]
+                    for i in range(images.shape[0]):
+                        for channel in range(3):
+                            images[i][:, :, channel] = dct2(
+                                (images[i][:, :, channel] * 255).astype(np.uint8)
+                            )
+                    labels = np.concatenate(
+                        (
+                            np.zeros(images_clean.shape[0]),
+                            np.ones(images_clean.shape[0]),
+                        ),
+                        axis=0,
+                    )
 
-        #  consider the top-channel_num indices
-        max_indices_at_channel = max_indices[
-            :, :, -max(args.channel_num) :
-        ]  # [bs, n_view, channel_num]
+                    idx = np.arange(images.shape[0])
+                    random.shuffle(idx)
+                    images = images[
+                        idx
+                    ]  # shape: [2*bs, 32, 32, 3]; value range: [0, 1]
+                    images = torch.tensor(images, device=device)
+                    images = torch.permute(
+                        images, (0, 3, 1, 2)
+                    )  # shape: [2*bs, 3, 32, 32]
+                    images = normalize(
+                        images
+                    )  # TODO: does normalize() affect performance?
 
-        max_indices_at_channel = max_indices_at_channel.reshape(
-            this_bs, -1
-        )  # [bs, n_view*channel_num]
-        all_probe_votes.append(max_indices_at_channel)
+                    labels = labels[idx]  # shape: [2*bs]
+                    labels = torch.tensor(labels, device=device, dtype=torch.long)
+
+                    # obtain loss and update params
+                    output = freq_detector(images)  # [2*bs, 2]
+                    loss = criterion(output, labels)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    print(f"> epoch is {epoch}; loss is {loss.item()}")
+            torch.save(
+                freq_detector.state_dict(),
+                os.path.join(args.save, "freq_detector.pth.tar"),
+            )
+        else:
+            # load model
+            pretrained_state_dict = torch.load(
+                args.pretrained_frequency_model, map_location=device
+            )
+            freq_detector.load_state_dict(pretrained_state_dict, strict=True)
+
+    if args.ignore_probe_channels:
+        all_probe_votes = []
+        for i, content in tqdm(enumerate(probe_loader)):
+            (path, images, views, target, _) = (
+                content  # views.len=num_views, each shape: [bs, 3, 224, 224]
+            )
+            views = torch.cat(views, dim=0)
+            views = views.to(device)
+            vision_features = backbone(views)  # [bs*n_views, 512]
+            total, C = vision_features.shape
+            vision_features = vision_features.detach().cpu().numpy()
+            u, s, v = np.linalg.svd(
+                vision_features - np.mean(vision_features, axis=0, keepdims=True),
+                full_matrices=False,
+            )
+
+            # get top eigenvector
+            eig_for_indexing = v[0:1]  # [1, C]
+
+            # adjust direction (sign)
+            corrs = np.matmul(eig_for_indexing, np.transpose(vision_features))
+            coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
+            coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
+            elementwise = (
+                eig_for_indexing * vision_features * coeff_adjust
+            )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
+
+            # get contributing indices sorted from low to high
+            max_indices = np.argsort(
+                elementwise, axis=1
+            )  # [bs*n_view, C], C are indices, sorted by value from low to high
+            this_bs = int(total / args.num_views)
+            max_indices = max_indices.reshape(
+                args.num_views, this_bs, C
+            )  # [n_view, bs, C]
+            max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
+
+            #  consider the top-channel_num indices
+            max_indices_at_channel = max_indices[
+                :, :, -max(args.channel_num) :
+            ]  # [bs, n_view, channel_num]
+
+            max_indices_at_channel = max_indices_at_channel.reshape(
+                this_bs, -1
+            )  # [bs, n_view*channel_num]
+            all_probe_votes.append(max_indices_at_channel)
 
     for i, content in tqdm(enumerate(data_loader)):
         (path, images, views, target, _) = (
@@ -1344,7 +1479,7 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
             ss_scores = -1 * np.max(corrs, axis=0)  # [bs]
             entropies.extend(ss_scores.tolist())
         elif args.minority_criterion == "ss_score_elements":
-            num_interested_channels = 1  # TODO:  changeale
+            num_interested_channels = 1
             top_channel_votes = max_indices[
                 :, :, -num_interested_channels:
             ].flatten()  # [bs*n_view*num_interested_channels]
@@ -1364,40 +1499,56 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
         all_votes.append(max_indices_at_channel)
         is_poisoned.extend([int("SSL-Backdoor" in item) for item in path])
 
-    all_entropies = np.array(all_entropies)  # poisoned image should have lower entropy
+        if args.use_frequency_detector:
+            # evaluate
+            freq_detector.eval()
+
+            images = invTrans(images)
+            images = torch.permute(images, (0, 2, 3, 1))
+            images = np.array(
+                images.cpu(), dtype=np.float32
+            )  # shape: [bs, 32, 32, 3]; value range: [0, 1]
+            for i in range(images.shape[0]):
+                for channel in range(3):
+                    images[i][:, :, channel] = dct2(
+                        (images[i][:, :, channel] * 255).astype(np.uint8)
+                    )
+            images = torch.tensor(images, device=device)
+            images = torch.permute(images, (0, 3, 1, 2))  # shape: [bs, 3, 32, 32]
+            images = normalize(images)  # TODO: does normalize() affect performance?
+
+            output = freq_detector(
+                images
+            )  # [bs, 2], the second element is anomaly score
+            output = output[:, 1].detach().cpu().tolist()
+            all_frequencies.extend(output)
+
     is_poisoned = np.array(is_poisoned)  # [#dataset]
-    score = roc_auc_score(y_true=is_poisoned, y_score=-all_entropies)
-    print(f"the AUROC score is: {score*100}")
 
-    all_entropies_indices = np.argsort(
-        all_entropies
-    )  # indices, sorted from low to high by entropy value
-
-    # minority_num = int(total_images * args.minority_percent)
     minority_lb = int(total_images * args.minority_percent_lower_bound)
     minority_ub = int(total_images * args.minority_percent_upper_bound)
     minority_num = minority_ub - minority_lb
 
-    # minority_indices = all_entropies_indices[:minority_num]
-    minority_indices = all_entropies_indices[minority_lb:minority_ub]
-
     all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view*channel_num]
 
-    # # TODO: remove, for debug only
-    # clean_indices = np.nonzero(is_poisoned == 0)[0]
-    # poison_indices = np.nonzero(is_poisoned == 1)[0]
-
-    # clean_votes = all_votes[clean_indices]  # [#clean, n_view*channel_num]
-    # poison_votes = all_votes[poison_indices]
-
-    # with open(f"../dataset_imagenet100_HTBA_train_clean_votes.npy", "wb") as f:
-    #     np.save(f, clean_votes)
-    # with open(f"../dataset_imagenet100_HTBA_train_poison_votes.npy", "wb") as f:
-    #     np.save(f, poison_votes)
-
-    # exit()
-
-    # # TODO: end of debug
+    if args.use_frequency_detector:
+        all_frequencies = np.array(all_frequencies)
+        freq_auc_score = roc_auc_score(y_true=is_poisoned, y_score=all_frequencies)
+        print(f"the AUROC score of frequency detector is: {freq_auc_score*100}")
+        all_frequencies_indices = np.argsort(
+            all_frequencies
+        )  # indices, sorted from low to high by entropy value
+        minority_indices = all_frequencies_indices[-minority_ub:-minority_lb]
+    else:
+        all_entropies = np.array(
+            all_entropies
+        )  # poisoned image should have lower entropy
+        score = roc_auc_score(y_true=is_poisoned, y_score=-all_entropies)
+        print(f"the AUROC score is: {score*100}")
+        all_entropies_indices = np.argsort(
+            all_entropies
+        )  # indices, sorted from low to high by entropy value
+        minority_indices = all_entropies_indices[minority_lb:minority_ub]
 
     all_votes = all_votes[
         minority_indices
@@ -1409,43 +1560,35 @@ def find_trigger_channels(args, data_loader, probe_loader, backbone):
         f"total count of found poisoned images: {poisoned_found}/{is_poisoned.shape[0]}={np.round(poisoned_found/is_poisoned.shape[0]*100,2)}"
     )
 
-    # obtain trigger channels
-    essential_indices = Counter(all_votes.flatten()).most_common(
-        2 * max(args.channel_num)
-    )  # TODO: note that we 2*
-    print(
-        f"essential_indices: {essential_indices}; #samples: {minority_num*args.num_views*max(args.channel_num)}"
-    )
-    print(
-        f"lowest entropies are: {[round(item,2) for item in all_entropies[minority_indices]]}"
-    )
-    print(
-        f"entropy mean is {np.mean(all_entropies):.2f}, std is {np.std(all_entropies):.2f}"
-    )
-    essential_indices = [idx for (idx, occ_count) in essential_indices]
+    if args.ignore_probe_channels:
 
-    # TODO: remove all_probe_votes from all_votes
-    all_probe_votes = np.concatenate(
-        all_probe_votes, axis=0
-    )  # [#dataset, n_view*channel_num]
-    probe_essential_indices = Counter(all_probe_votes.flatten()).most_common(
-        max(args.channel_num)
-    )
-    probe_essential_indices = [
-        idx for (idx, occ_count) in probe_essential_indices
-    ]  # a list of channel indices
+        essential_indices = Counter(all_votes.flatten()).most_common(
+            2 * max(args.channel_num)
+        )
+        essential_indices = [idx for (idx, occ_count) in essential_indices]
 
-    print(f"probe_essential_indices are: {probe_essential_indices}")
+        all_probe_votes = np.concatenate(
+            all_probe_votes, axis=0
+        )  # [#dataset, n_view*channel_num]
+        probe_essential_indices = Counter(all_probe_votes.flatten()).most_common(
+            max(args.channel_num)
+        )
+        probe_essential_indices = [
+            idx for (idx, occ_count) in probe_essential_indices
+        ]  # a list of channel indices
 
-    essential_indices = [
-        item for item in essential_indices if item not in probe_essential_indices
-    ]
+        essential_indices = [
+            item for item in essential_indices if item not in probe_essential_indices
+        ]
+        essential_indices = torch.tensor(essential_indices[: max(args.channel_num)])
+    else:
+        essential_indices = Counter(all_votes.flatten()).most_common(
+            max(args.channel_num)
+        )
+        essential_indices = torch.tensor(
+            [idx for (idx, occ_count) in essential_indices]
+        )
 
-    essential_indices = torch.tensor(essential_indices[: max(args.channel_num)])
-
-    print(f"after removing probe channels, essential_indices are: {essential_indices}")
-
-    # TODO: end of removing
     return essential_indices
 
 

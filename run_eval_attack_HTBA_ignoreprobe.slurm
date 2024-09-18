@@ -63,7 +63,8 @@ python eval_linear.py \
     --use_frequency_detector \
     --frequency_detector_epochs 500 \
     \
-    --note "use frequency detector" \
+    --ignore_probe_channels \
+    --note "use frequency detector, ignore_probe_channels" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
