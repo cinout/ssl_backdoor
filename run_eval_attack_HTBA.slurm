@@ -64,7 +64,7 @@ python eval_linear.py \
     --frequency_detector_epochs 400 \
     \
     --ignore_probe_channels \
-    --note "0.004-0.008, ep=400" \
+    --note "0.004-0.008, ep=400 [does normalize make things worse?]" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
