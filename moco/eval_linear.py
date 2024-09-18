@@ -221,6 +221,7 @@ parser.add_argument(
     type=float,
     default=0.95,
 )
+parser.add_argument("--note", type=str, default="")
 
 # for mask pruning
 parser.add_argument(
