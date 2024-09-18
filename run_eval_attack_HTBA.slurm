@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="htba"
 #SBATCH --account=punim1623
-#SBATCH --time=0-10:00:00
+#SBATCH --time=0-12:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -57,13 +57,14 @@ python eval_linear.py \
     --num_views 64 \
     \
     --minority_criterion ss_score \
-    --minority_percent_lower_bound 0.002 \
-    --minority_percent_upper_bound 0.010 \
+    --minority_percent_lower_bound 0.004 \
+    --minority_percent_upper_bound 0.008 \
     \
     --use_frequency_detector \
-    --frequency_detector_epochs 500 \
+    --frequency_detector_epochs 400 \
     \
-    --note "use frequency detector" \
+    --ignore_probe_channels \
+    --note "0.004-0.008, ep=400" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
