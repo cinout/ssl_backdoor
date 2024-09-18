@@ -53,18 +53,18 @@ python eval_linear.py \
     --load_cache \
     --seed 42 \
     --detect_trigger_channels \
-    --channel_num 12 16 24 \
+    --channel_num 24 \
     --num_views 64 \
     \
     --minority_criterion ss_score \
-    --minority_percent_lower_bound 0.004 \
-    --minority_percent_upper_bound 0.008 \
+    --minority_percent_lower_bound 0.002 \
+    --minority_percent_upper_bound 0.010 \
     \
     --use_frequency_detector \
-    --frequency_detector_epochs 400 \
+    --frequency_detector_epochs 500 \
     \
     --ignore_probe_channels \
-    --note "0.004-0.008, ep=400 [does normalize make things worse?]" \
+    --note "0.002-0.010, ep=500, channel_num=24 [does normalize make things worse?]" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
