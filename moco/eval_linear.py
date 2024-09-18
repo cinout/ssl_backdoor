@@ -288,7 +288,6 @@ parser.add_argument(
     help="poisoned class",
 )
 
-# TODO: check if these to be added to slurm
 parser.add_argument(
     "--pretrained_frequency_model",
     type=str,
@@ -1350,9 +1349,9 @@ def find_trigger_channels(
                     images = torch.permute(
                         images, (0, 3, 1, 2)
                     )  # shape: [2*bs, 3, 32, 32]
-                    images = normalize(
-                        images
-                    )  # TODO: does normalize() affect performance?
+                    # images = normalize(
+                    #     images
+                    # )  # TODO: does normalize() affect performance?
 
                     labels = labels[idx]  # shape: [2*bs]
                     labels = torch.tensor(labels, device=device, dtype=torch.long)
@@ -1516,7 +1515,7 @@ def find_trigger_channels(
                     )
             images = torch.tensor(images, device=device)
             images = torch.permute(images, (0, 3, 1, 2))  # shape: [bs, 3, 32, 32]
-            images = normalize(images)  # TODO: does normalize() affect performance?
+            # images = normalize(images)  # TODO: does normalize() affect performance?
 
             output = freq_detector(
                 images
