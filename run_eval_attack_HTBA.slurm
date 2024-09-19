@@ -55,7 +55,7 @@ python eval_linear.py \
     --seed 42 \
     \
     --detect_trigger_channels \
-    --channel_num 30 \
+    --channel_num 40 \
     --ignore_probe_channel_num 15 \
     \
     --minority_criterion ss_score \
@@ -66,7 +66,7 @@ python eval_linear.py \
     --frequency_detector_epochs 500 \
     \
     --ignore_probe_channels \
-    --note "set 1" \
+    --note "set 2" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
