@@ -1550,7 +1550,10 @@ def find_trigger_channels(
         all_frequencies_indices = np.argsort(
             all_frequencies
         )  # indices, sorted from low to high by entropy value
-        minority_indices = all_frequencies_indices[-minority_ub:-minority_lb]
+        if minority_lb > 0:
+            minority_indices = all_frequencies_indices[-minority_ub:-minority_lb]
+        else:
+            minority_indices = all_frequencies_indices[-minority_ub:]
     else:
         all_entropies = np.array(
             all_entropies
