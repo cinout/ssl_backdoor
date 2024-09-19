@@ -63,10 +63,10 @@ python eval_linear.py \
     --minority_percent_upper_bound 0.010 \
     \
     --use_frequency_detector \
-    --frequency_detector_epochs 800 \
+    --frequency_detector_epochs 500 \
     \
     --ignore_probe_channels \
-    --note "0.000-0.010, ep=800, channel_num=30, ignore_probe_channel_num=15 [set5: take_channel=max(...)]" \
+    --note "0.000-0.010, ep=500, channel_num=30, ignore_probe_channel_num=15 [set5: take_channel=max(...)]" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
