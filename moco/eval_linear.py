@@ -1461,11 +1461,12 @@ def find_trigger_channels(
         max_indices = max_indices.reshape(args.num_views, this_bs, C)  # [n_view, bs, C]
         max_indices = np.transpose(max_indices, (1, 0, 2))  # [bs, n_view, C]
 
-        take_channel = (
-            max(args.channel_num) + args.ignore_probe_channel_num
-            if args.ignore_probe_channels
-            else max(args.channel_num)
-        )
+        take_channel = max(args.channel_num)
+        # take_channel = (
+        #     max(args.channel_num) + args.ignore_probe_channel_num
+        #     if args.ignore_probe_channels
+        #     else max(args.channel_num)
+        # )
 
         max_indices_at_channel = max_indices[
             :, :, -take_channel:
