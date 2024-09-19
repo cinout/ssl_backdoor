@@ -900,8 +900,18 @@ def main_worker(args):
         if args.detect_trigger_channels:
             poisoned_train_loader = torch.utils.data.DataLoader(
                 FileListDataset(
-                    args.poisoned_train_file, just_resize_transform, ss_transform
+                    args.poisoned_train_file,
+                    transforms.Compose(
+                        [
+                            transforms.Resize((224, 224)),
+                            transforms.ToTensor(),
+                        ]
+                    ),
+                    ss_transform,
                 ),
+                # FileListDataset(
+                #     args.poisoned_train_file, just_resize_transform, ss_transform
+                # ),
                 batch_size=args.batch_size,
                 shuffle=True,
                 num_workers=args.workers,
@@ -1354,9 +1364,6 @@ def find_trigger_channels(
                     images = torch.permute(
                         images, (0, 3, 1, 2)
                     )  # shape: [2*bs, 3, 32, 32]
-                    # images = normalize(
-                    #     images
-                    # )  # TODO: does normalize() affect performance?
 
                     labels = labels[idx]  # shape: [2*bs]
                     labels = torch.tensor(labels, device=device, dtype=torch.long)
@@ -1515,7 +1522,7 @@ def find_trigger_channels(
             # evaluate
             freq_detector.eval()
 
-            images = invTrans(images)
+            # images = invTrans(images)
             images = torch.permute(images, (0, 2, 3, 1))
             images = np.array(
                 images.cpu(), dtype=np.float32
@@ -1527,7 +1534,6 @@ def find_trigger_channels(
                     )
             images = torch.tensor(images, device=device)
             images = torch.permute(images, (0, 3, 1, 2))  # shape: [bs, 3, 32, 32]
-            # images = normalize(images)  # TODO: does normalize() affect performance?
 
             output = freq_detector(
                 images
