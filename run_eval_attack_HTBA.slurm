@@ -66,7 +66,7 @@ python eval_linear.py \
     --frequency_detector_epochs 500 \
     \
     --ignore_probe_channels \
-    --note "set 4" \
+    --note "set 4 [RE=EVALUATE]" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
