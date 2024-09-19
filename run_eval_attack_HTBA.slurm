@@ -59,14 +59,14 @@ python eval_linear.py \
     --ignore_probe_channel_num 15 \
     \
     --minority_criterion ss_score \
-    --minority_percent_lower_bound 0.002 \
-    --minority_percent_upper_bound 0.012 \
+    --minority_percent_lower_bound 0.000 \
+    --minority_percent_upper_bound 0.010 \
     \
     --use_frequency_detector \
     --frequency_detector_epochs 800 \
     \
     --ignore_probe_channels \
-    --note "0.002-0.012, ep=800, channel_num=30, ignore_probe_channel_num=15" \
+    --note "0.000-0.010, ep=800, channel_num=30, ignore_probe_channel_num=15" \
     
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
